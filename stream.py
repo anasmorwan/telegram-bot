@@ -1,6 +1,8 @@
 import os
+import requests
+import subprocess
+import time
 from dotenv import load_dotenv
-
 # تحميل البيانات من ملف .env
 load_dotenv()
 
