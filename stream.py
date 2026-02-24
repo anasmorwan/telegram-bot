@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from threading import Thread
 from flask import Flask
 
-# تحميل البيانات من ملف .env
+# ====== تحميل متغيرات البيئة ======
 load_dotenv()
 
 RTMP_URL = os.getenv("RTMP_URL")
@@ -18,6 +18,7 @@ SURA_LIST = "suras.txt"
 
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
 
+# ====== تحميل السور ======
 def download_suras():
     with open(SURA_LIST, "r") as f:
         urls = [line.strip() for line in f if line.strip()]
@@ -27,36 +28,48 @@ def download_suras():
         filepath = os.path.join(AUDIO_FOLDER, filename)
         if not os.path.exists(filepath):
             print(f"Downloading {filename}...")
-            r = requests.get(url, stream=True)
-            with open(filepath, "wb") as out:
-                for chunk in r.iter_content(chunk_size=8192):
-                    out.write(chunk)
+            try:
+                r = requests.get(url, stream=True, timeout=30)
+                with open(filepath, "wb") as out:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        out.write(chunk)
+            except Exception as e:
+                print(f"Failed to download {filename}: {e}")
 
+# ====== إنشاء قائمة تشغيل ======
 def create_playlist():
     files = sorted(f for f in os.listdir(AUDIO_FOLDER) if f.endswith(".mp3"))
-    with open("playlist.txt", "w") as f:
-        for file in files:
-            f.write(f"file '{AUDIO_FOLDER}/{file}'\n")
+    playlist = [os.path.join(AUDIO_FOLDER, f) for f in files]
+    return playlist
 
-def stream():
-    command = [
-        "ffmpeg",
-        "-re",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", "playlist.txt",
-        "-vn",
-        "-acodec", "aac",
-        "-b:a", "128k",
-        "-f", "flv",
-        FULL_STREAM_URL
-    ]
+# ====== تشغيل البث مع مراقبة FFmpeg ======
+def stream_loop():
+    playlist = create_playlist()
     while True:
-        process = subprocess.Popen(command)
-        process.wait()
-        time.sleep(5)
+        for filepath in playlist:
+            print(f"Streaming {os.path.basename(filepath)}...")
+            command = [
+                "ffmpeg",
+                "-re",
+                "-i", filepath,
+                "-vn",
+                "-acodec", "aac",
+                "-b:a", "128k",
+                "-f", "flv",
+                FULL_STREAM_URL
+            ]
+            while True:
+                try:
+                    process = subprocess.run(command)
+                    break  # انتهى البث للسورة وانتقل للسورة التالية
+                except Exception as e:
+                    print(f"FFmpeg crashed: {e}")
+                    print("Restarting FFmpeg in 5 seconds...")
+                    time.sleep(5)
+        print("Completed playlist, restarting from first sura...")
+        time.sleep(2)  # فاصل قصير قبل إعادة الختمة
 
-# ======== إضافة Flask لعمل Monitor Endpoint ========
+# ====== إضافة Flask لمراقبة uptime ======
 app = Flask(__name__)
 
 @app.route("/")
@@ -64,16 +77,19 @@ def home():
     return "Alive", 200
 
 def run_flask():
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
-# ======================================================
-
+# ====== Main ======
 if __name__ == "__main__":
-    # تشغيل Flask في Thread منفصل حتى لا يوقف البث
+    # تشغيل Flask في Thread منفصل
     t = Thread(target=run_flask)
     t.daemon = True
     t.start()
 
+    # تحميل السور وإنشاء قائمة التشغيل
     download_suras()
     create_playlist()
-    stream()
+
+    # تشغيل البث المستمر
+    stream_loop()
