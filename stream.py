@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import subprocess
 import time
@@ -6,28 +7,37 @@ from dotenv import load_dotenv
 from threading import Thread
 from flask import Flask
 
-# ====== تحميل متغيرات البيئة ======
 load_dotenv()
 
 RTMP_URL = os.getenv("RTMP_URL")
 STREAM_KEY = os.getenv("STREAM_KEY")
 FULL_STREAM_URL = f"{RTMP_URL}/{STREAM_KEY}"
 
-AUDIO_FOLDER = "audio"
-SURA_LIST = "suras.txt"
+RECITERS_FOLDER = "reciters"
+CONFIG_FILE = "config.json"
 
-os.makedirs(AUDIO_FOLDER, exist_ok=True)
+# ====== قراءة القارئ الحالي ======
+def get_current_reciter():
+    with open(CONFIG_FILE, "r") as f:
+        config = json.load(f)
+    return config["reciter"]
 
-# ====== تحميل السور ======
-def download_suras():
-    with open(SURA_LIST, "r") as f:
+# ====== تحميل سور قارئ محدد ======
+def download_suras(reciter):
+    reciter_path = os.path.join(RECITERS_FOLDER, reciter)
+    sura_list = os.path.join(reciter_path, "suras.txt")
+    audio_folder = os.path.join(reciter_path, "audio")
+
+    os.makedirs(audio_folder, exist_ok=True)
+
+    with open(sura_list, "r") as f:
         urls = [line.strip() for line in f if line.strip()]
 
     for url in urls:
         filename = url.split("/")[-1]
-        filepath = os.path.join(AUDIO_FOLDER, filename)
+        filepath = os.path.join(audio_folder, filename)
         if not os.path.exists(filepath):
-            print(f"Downloading {filename}...")
+            print(f"[{reciter}] Downloading {filename}...")
             try:
                 r = requests.get(url, stream=True, timeout=30)
                 with open(filepath, "wb") as out:
@@ -36,18 +46,34 @@ def download_suras():
             except Exception as e:
                 print(f"Failed to download {filename}: {e}")
 
-# ====== إنشاء قائمة تشغيل ======
-def create_playlist():
-    files = sorted(f for f in os.listdir(AUDIO_FOLDER) if f.endswith(".mp3"))
-    playlist = [os.path.join(AUDIO_FOLDER, f) for f in files]
-    return playlist
+# ====== إنشاء قائمة تشغيل لقارئ ======
+def create_playlist(reciter):
+    audio_folder = os.path.join(RECITERS_FOLDER, reciter, "audio")
+    files = sorted(f for f in os.listdir(audio_folder) if f.endswith(".mp3"))
+    return [os.path.join(audio_folder, f) for f in files]
 
-# ====== تشغيل البث مع مراقبة FFmpeg ======
+# ====== البث الذكي ======
 def stream_loop():
-    playlist = create_playlist()
+    current_reciter = None
+    playlist = []
+
     while True:
+        reciter = get_current_reciter()
+
+        if reciter != current_reciter:
+            print(f"Switching to reciter: {reciter}")
+            download_suras(reciter)
+            playlist = create_playlist(reciter)
+            current_reciter = reciter
+
         for filepath in playlist:
+            # تحقق إذا تغير القارئ أثناء التشغيل
+            if get_current_reciter() != current_reciter:
+                print("Reciter changed. Reloading...")
+                break
+
             print(f"Streaming {os.path.basename(filepath)}...")
+
             command = [
                 "ffmpeg",
                 "-re",
@@ -58,18 +84,12 @@ def stream_loop():
                 "-f", "flv",
                 FULL_STREAM_URL
             ]
-            while True:
-                try:
-                    process = subprocess.run(command)
-                    break  # انتهى البث للسورة وانتقل للسورة التالية
-                except Exception as e:
-                    print(f"FFmpeg crashed: {e}")
-                    print("Restarting FFmpeg in 5 seconds...")
-                    time.sleep(5)
-        print("Completed playlist, restarting from first sura...")
-        time.sleep(2)  # فاصل قصير قبل إعادة الختمة
 
-# ====== إضافة Flask لمراقبة uptime ======
+            process = subprocess.run(command)
+
+        time.sleep(1)
+
+# ====== Flask uptime ======
 app = Flask(__name__)
 
 @app.route("/")
@@ -82,14 +102,8 @@ def run_flask():
 
 # ====== Main ======
 if __name__ == "__main__":
-    # تشغيل Flask في Thread منفصل
     t = Thread(target=run_flask)
     t.daemon = True
     t.start()
 
-    # تحميل السور وإنشاء قائمة التشغيل
-    download_suras()
-    create_playlist()
-
-    # تشغيل البث المستمر
     stream_loop()
