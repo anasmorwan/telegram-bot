@@ -9,7 +9,10 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CONFIG_FILE = "config.json"
 RECITERS_FOLDER = "reciters"
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
+def is_admin(user_id):
+    return user_id == ADMIN_ID
 def get_reciters():
     return os.listdir(RECITERS_FOLDER)
 
@@ -18,11 +21,17 @@ def set_reciter(name):
         json.dump({"reciter": name}, f)
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("غير مصرح.")
+        return
     with open(CONFIG_FILE, "r") as f:
         config = json.load(f)
     await update.message.reply_text(f"Current reciter: {config['reciter']}")
 
 async def setreciter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("غير مصرح.")
+        return
     if not context.args:
         await update.message.reply_text("Usage: /setreciter sudais")
         return
