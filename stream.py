@@ -6,7 +6,8 @@ import time
 from dotenv import load_dotenv
 from threading import Thread
 from flask import Flask
-
+import asyncio
+from bot import app as bot_app
 load_dotenv()
 
 RTMP_URL = os.getenv("RTMP_URL")
@@ -140,9 +141,12 @@ def stream_loop():
 # ====== Flask uptime ======
 app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "Alive", 200
+@app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
+async def telegram_webhook():
+    data = request.get_json(force=True)
+    update = Update.de_json(data, bot_app.bot)
+    await bot_app.process_update(update)
+    return "OK"
 
 def run_flask():
     port = int(os.getenv("PORT", 5000))
@@ -153,13 +157,17 @@ def run_flask():
 from bot import start_bot
 
 if __name__ == "__main__":
+    # تشغيل Flask في Thread
     t1 = Thread(target=run_flask)
     t1.daemon = True
     t1.start()
 
-    t2 = Thread(target=start_bot)
+    # تشغيل البث في Thread
+    t2 = Thread(target=stream_loop)
     t2.daemon = True
     t2.start()
 
+    # تشغيل البوت في الـ Main Thread (مهم جدًا)
+    start_bot()
     
     stream_loop()
