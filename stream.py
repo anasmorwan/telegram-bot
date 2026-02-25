@@ -8,7 +8,13 @@ from dotenv import load_dotenv
 from threading import Thread
 from flask import Flask
 import asyncio
+import requests
+import tempfile
+import os
+from datetime import datetime
+
 load_dotenv()
+API_URL = "https://mp3quran.net/api/v3/reciters?language=ar"
 
 RTMP_URL = os.getenv("RTMP_URL")
 STREAM_KEY = os.getenv("STREAM_KEY")
@@ -189,6 +195,83 @@ def setreciter(message):
     bot.reply_to(message, f"Switched to {name}")
 
 
+
+@bot.message_handler(commands=['buildreciter'])
+def buildreciter(message):
+    if not is_admin(message.from_user.id):
+        bot.reply_to(message, "غير مصرح.")
+        return
+
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.reply_to(message, "استخدم:\n/buildreciter اسم_القارئ")
+        return
+
+    target_name = " ".join(parts[1:]).strip()
+
+    bot.reply_to(message, "⏳ جاري البحث عن القارئ...")
+
+    try:
+        response = requests.get(API_URL, timeout=20)
+        data = response.json()
+        reciters = data.get("reciters", [])
+
+        reciter_data = None
+
+        # البحث عن القارئ
+        for r in reciters:
+            if target_name in r["name"]:
+                reciter_data = r
+                break
+
+        if not reciter_data:
+            bot.reply_to(message, "❌ لم يتم العثور على القارئ.")
+            return
+
+        # اختيار مصحف حفص إن وجد
+        moshaf_list = reciter_data.get("moshaf", [])
+        selected_moshaf = None
+        for m in moshaf_list:
+            if "حفص" in m.get("name", ""):
+                selected_moshaf = m
+                break
+
+        if not selected_moshaf and moshaf_list:
+            selected_moshaf = moshaf_list[0]
+
+        if not selected_moshaf:
+            bot.reply_to(message, "⚠️ لا يوجد مصحف متاح لهذا القارئ.")
+            return
+
+        server = selected_moshaf.get("server")
+        if not server:
+            bot.reply_to(message, "⚠️ لا يوجد رابط سيرفر صالح.")
+            return
+
+        # إنشاء ملف مؤقت
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8") as tmp:
+            tmp.write(f"# reciter: {reciter_data['name']}\n")
+            tmp.write(f"# moshaf: {selected_moshaf.get('name','unknown')}\n")
+            tmp.write(f"# generated: {datetime.now()}\n\n")
+
+            for i in range(1, 115):
+                s_num = str(i).zfill(3)
+                link = f"{server}{s_num}.mp3"
+                tmp.write(link + "\n")
+
+            tmp_path = tmp.name
+
+        # إرسال الملف للمستخدم
+        with open(tmp_path, "rb") as f:
+            bot.send_document(message.chat.id, f, caption=f"{reciter_data['name']}.txt")
+
+        os.remove(tmp_path)
+        bot.reply_to(message, "✅ تم إنشاء الملف بنجاح.")
+
+    except requests.exceptions.RequestException:
+        bot.reply_to(message, "❌ خطأ في الاتصال بالـ API.")
+    except Exception as e:
+        bot.reply_to(message, f"❌ خطأ غير متوقع: {str(e)}")
 
 # ====== Flask uptime ======
 app = Flask(__name__)
