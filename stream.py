@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from threading import Thread
 from flask import Flask
 import asyncio
-from bot import app as bot_app
 load_dotenv()
 
 RTMP_URL = os.getenv("RTMP_URL")
