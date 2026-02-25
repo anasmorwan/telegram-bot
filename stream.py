@@ -101,9 +101,17 @@ def run_flask():
     app.run(host="0.0.0.0", port=port)
 
 # ====== Main ======
-if __name__ == "__main__":
-    t = Thread(target=run_flask)
-    t.daemon = True
-    t.start()
 
+from bot import start_bot
+
+if __name__ == "__main__":
+    t1 = Thread(target=run_flask)
+    t1.daemon = True
+    t1.start()
+
+    t2 = Thread(target=start_bot)
+    t2.daemon = True
+    t2.start()
+
+    
     stream_loop()
