@@ -66,28 +66,44 @@ def stream_loop():
             playlist = create_playlist(reciter)
             current_reciter = reciter
 
-        for filepath in playlist:
-            # تحقق إذا تغير القارئ أثناء التشغيل
-            if get_current_reciter() != current_reciter:
-                print("Reciter changed. Reloading...")
-                break
+        with open(CONFIG_FILE, "r") as f:
+    config = json.load(f)
 
-            print(f"Streaming {os.path.basename(filepath)}...")
+index = config.get("current_index", 0)
 
-            command = [
-                "ffmpeg",
-                "-re",
-                "-i", filepath,
-                "-vn",
-                "-acodec", "aac",
-                "-b:a", "128k",
-                "-f", "flv",
-                FULL_STREAM_URL
-            ]
+while index < len(playlist):
 
-            process = subprocess.run(command)
+    # إعادة قراءة القارئ الحالي
+    new_reciter = get_current_reciter()
+    if new_reciter != current_reciter:
+        break
 
-        time.sleep(1)
+    filepath = playlist[index]
+
+    print(f"Streaming {os.path.basename(filepath)}...")
+
+    command = [
+        "ffmpeg",
+        "-re",
+        "-i", filepath,
+        "-vn",
+        "-acodec", "aac",
+        "-b:a", "128k",
+        "-f", "flv",
+        FULL_STREAM_URL
+    ]
+
+    subprocess.run(command)
+
+    # تحديث المؤشر
+    index += 1
+
+    with open(CONFIG_FILE, "r") as f:
+        config = json.load(f)
+
+    config["current_index"] = index
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f)
 
 # ====== Flask uptime ======
 app = Flask(__name__)
