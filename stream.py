@@ -60,26 +60,31 @@ def stream_loop():
     while True:
         reciter = get_current_reciter()
 
+        # إذا تغير القارئ
         if reciter != current_reciter:
             print(f"Switching to reciter: {reciter}")
             download_suras(reciter)
             playlist = create_playlist(reciter)
             current_reciter = reciter
 
+        # قراءة المؤشر الحالي
         with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
 
         index = config.get("current_index", 0)
 
+        # إذا المؤشر أكبر من عدد السور (حالة نادرة)
+        if index >= len(playlist):
+            index = 0
+
         while index < len(playlist):
 
-            # إعادة قراءة القارئ الحالي
-            new_reciter = get_current_reciter()
-            if new_reciter != current_reciter:
+            # تحقق إذا تغير القارئ أثناء التشغيل
+            if get_current_reciter() != current_reciter:
+                print("Reciter changed أثناء التشغيل")
                 break
 
             filepath = playlist[index]
-
             print(f"Streaming {os.path.basename(filepath)}...")
 
             command = [
@@ -93,20 +98,44 @@ def stream_loop():
                 FULL_STREAM_URL
             ]
 
-            subprocess.run(command)
+            try:
+                process = subprocess.run(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
 
-            # تحديث المؤشر
+                if process.returncode != 0:
+                    print("⚠️ فشل تشغيل السورة — سيتم تجاوزها")
+
+            except Exception as e:
+                print(f"FFmpeg crash: {e}")
+
+            # الانتقال للسورة التالية
             index += 1
 
+            # تحديث المؤشر في config
             with open(CONFIG_FILE, "r") as f:
                 config = json.load(f)
 
             config["current_index"] = index
+
             with open(CONFIG_FILE, "w") as f:
                 json.dump(config, f)
+
+        # ✅ هنا فقط نعيد المؤشر إلى صفر بعد اكتمال القائمة
+        if index >= len(playlist):
+            print("🎉 اكتملت الختمة — إعادة من البداية")
+
+            with open(CONFIG_FILE, "r") as f:
+                config = json.load(f)
+
             config["current_index"] = 0
 
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(config, f)
 
+        time.sleep(1)
 
 # ====== Flask uptime ======
 app = Flask(__name__)
