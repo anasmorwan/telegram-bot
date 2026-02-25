@@ -143,7 +143,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-return "Alive", 200
+    return "Alive", 200
 
 def run_flask():
     port = int(os.getenv("PORT", 5000))
