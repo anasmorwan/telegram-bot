@@ -143,5 +143,6 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("status", status))
 app.add_handler(CommandHandler("setreciter", setreciter))
 app.add_handler(CommandHandler("buildreciter", buildreciter))
-def start_bot():
-    app.run_polling()
+async def start_bot():
+    await app.initialize()
+    await app.start()
