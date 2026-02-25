@@ -1,5 +1,6 @@
 import os
 import json
+import telebot
 import requests
 import subprocess
 import time
@@ -16,7 +17,10 @@ FULL_STREAM_URL = f"{RTMP_URL}/{STREAM_KEY}"
 
 RECITERS_FOLDER = "reciters"
 CONFIG_FILE = "config.json"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
+bot = telebot.TeleBot(BOT_TOKEN)
 # ====== قراءة القارئ الحالي ======
 def get_current_reciter():
     with open(CONFIG_FILE, "r") as f:
@@ -138,6 +142,55 @@ def stream_loop():
 
         time.sleep(1)
 
+
+def is_admin(user_id):
+    return user_id == ADMIN_ID
+
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    if not is_admin(message.from_user.id):
+        bot.reply_to(message, "غير مصرح.")
+        return
+    bot.reply_to(message, "البوت يعمل ✅")
+
+
+@bot.message_handler(commands=['status'])
+def status(message):
+    if not is_admin(message.from_user.id):
+        bot.reply_to(message, "غير مصرح.")
+        return
+
+    with open(CONFIG_FILE, "r") as f:
+        config = json.load(f)
+
+    bot.reply_to(message, f"Current reciter: {config.get('reciter')}")
+
+
+@bot.message_handler(commands=['setreciter'])
+def setreciter(message):
+    if not is_admin(message.from_user.id):
+        bot.reply_to(message, "غير مصرح.")
+        return
+
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.reply_to(message, "Usage: /setreciter sudais")
+        return
+
+    name = parts[1]
+
+    if not os.path.exists(os.path.join(RECITERS_FOLDER, name)):
+        bot.reply_to(message, "Reciter not found.")
+        return
+
+    with open(CONFIG_FILE, "w") as f:
+        json.dump({"reciter": name, "current_index": 0}, f)
+
+    bot.reply_to(message, f"Switched to {name}")
+
+
+
 # ====== Flask uptime ======
 app = Flask(__name__)
 
@@ -151,20 +204,21 @@ def run_flask():
 
 # ====== Main ======
 
-from bot import start_bot
+
 
 if __name__ == "__main__":
-    # تشغيل Flask في Thread
+
+    # Flask
     t1 = Thread(target=run_flask)
     t1.daemon = True
     t1.start()
 
-    # تشغيل البث في Thread
+    # Stream
     t2 = Thread(target=stream_loop)
     t2.daemon = True
     t2.start()
 
-    # تشغيل البوت في الـ Main Thread (مهم جدًا)
-    start_bot()
-    
+    # Bot polling (في Main Thread)
+    print("Bot started...")
+    bot.infinity_polling()
     stream_loop()
