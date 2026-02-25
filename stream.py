@@ -67,43 +67,46 @@ def stream_loop():
             current_reciter = reciter
 
         with open(CONFIG_FILE, "r") as f:
-    config = json.load(f)
+            config = json.load(f)
 
-index = config.get("current_index", 0)
+        index = config.get("current_index", 0)
 
-while index < len(playlist):
+        while index < len(playlist):
 
-    # إعادة قراءة القارئ الحالي
-    new_reciter = get_current_reciter()
-    if new_reciter != current_reciter:
-        break
+            # إعادة قراءة القارئ الحالي
+            new_reciter = get_current_reciter()
+            if new_reciter != current_reciter:
+                break
 
-    filepath = playlist[index]
+            filepath = playlist[index]
 
-    print(f"Streaming {os.path.basename(filepath)}...")
+            print(f"Streaming {os.path.basename(filepath)}...")
 
-    command = [
-        "ffmpeg",
-        "-re",
-        "-i", filepath,
-        "-vn",
-        "-acodec", "aac",
-        "-b:a", "128k",
-        "-f", "flv",
-        FULL_STREAM_URL
-    ]
+            command = [
+                "ffmpeg",
+                "-re",
+                "-i", filepath,
+                "-vn",
+                "-acodec", "aac",
+                "-b:a", "128k",
+                "-f", "flv",
+                FULL_STREAM_URL
+            ]
 
-    subprocess.run(command)
+            subprocess.run(command)
 
-    # تحديث المؤشر
-    index += 1
+            # تحديث المؤشر
+            index += 1
 
-    with open(CONFIG_FILE, "r") as f:
-        config = json.load(f)
+            with open(CONFIG_FILE, "r") as f:
+                config = json.load(f)
 
-    config["current_index"] = index
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f)
+            config["current_index"] = index
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(config, f)
+            config["current_index"] = 0
+
+
 
 # ====== Flask uptime ======
 app = Flask(__name__)
