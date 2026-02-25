@@ -141,12 +141,9 @@ def stream_loop():
 # ====== Flask uptime ======
 app = Flask(__name__)
 
-@app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
-async def telegram_webhook():
-    data = request.get_json(force=True)
-    update = Update.de_json(data, bot_app.bot)
-    await bot_app.process_update(update)
-    return "OK"
+@app.route("/")
+def home():
+return "Alive", 200
 
 def run_flask():
     port = int(os.getenv("PORT", 5000))
