@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>المصحف المباشر</title>
+
+<style>
+body {
+    font-family: "Amiri", serif;
+    background: #f4f1ea;
+    text-align: center;
+    direction: rtl;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+}
+
+h1 {
+    margin-bottom: 5px;
+}
+
+.info {
+    color: #555;
+    margin-bottom: 20px;
+}
+
+.ayah {
+    font-size: 26px;
+    line-height: 2;
+    margin-bottom: 15px;
+}
+
+.number {
+    color: green;
+    font-size: 18px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h1>📖 المصحف المباشر</h1>
+
+<div class="info">
+القارئ: {{ reciter }} <br>
+السورة رقم: {{ sura_number }}
+</div>
+
+<div id="quran">
+⏳ جاري تحميل السورة...
+</div>
+
+</div>
+
+<script>
+let suraNumber = {{ sura_number }};
+
+function loadSurah() {
+    fetch("https://api.alquran.cloud/v1/surah/" + suraNumber)
+    .then(response => response.json())
+    .then(data => {
+
+        let ayahs = data.data.ayahs;
+        let html = "";
+
+        ayahs.forEach(a => {
+            html += `<div class="ayah">
+                        ${a.text}
+                        <span class="number">(${a.numberInSurah})</span>
+                     </div>`;
+        });
+
+        document.getElementById("quran").innerHTML = html;
+    });
+}
+
+loadSurah();
+
+// تحديث الصفحة كل 15 ثانية لمتابعة التغيير
+setInterval(() => {
+    location.reload();
+}, 15000);
+
+</script>
+
+</body>
+</html>
