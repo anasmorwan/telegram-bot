@@ -12,7 +12,7 @@ import requests
 import tempfile
 import os
 from datetime import datetime
-
+from flask import render_template
 load_dotenv()
 API_URL = "https://mp3quran.net/api/v3/reciters?language=ar"
 
@@ -280,6 +280,23 @@ app = Flask(__name__)
 def home():
     return "Alive", 200
 
+
+@app.route("/mushaf")
+def mushaf():
+    with open(CONFIG_FILE, "r") as f:
+        config = json.load(f)
+
+    reciter = config.get("reciter", "غير معروف")
+    index = config.get("current_index", 0)
+
+    # رقم السورة = index + 1
+    sura_number = index + 1
+
+    return render_template(
+        "mushaf.html",
+        reciter=reciter,
+        sura_number=sura_number
+    )
 def run_flask():
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
