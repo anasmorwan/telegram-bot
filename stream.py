@@ -148,6 +148,9 @@ SURA_NAMES = {
 START_TIME = time.time()
 from threading import Lock
 config_lock = Lock()
+ffmpeg_process = None
+
+
 # ====== قراءة القارئ الحالي ======
 def get_current_reciter():
     with open(CONFIG_FILE, "r") as f:
@@ -254,6 +257,8 @@ def stream_loop():
 
                 print(f"📖 الآن بث سورة {sura_name}")
 
+                global ffmpeg_process
+
                 command = [
                     "ffmpeg",
                     "-re",
@@ -266,23 +271,34 @@ def stream_loop():
                 ]
 
                 try:
-                    process = subprocess.Popen(
+                    ffmpeg_process = subprocess.Popen(
                         command,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE
                     )
 
-                    stdout, stderr = process.communicate()
+                    # ننتظر العملية بدون تجميد كامل
+                    while True:
+                        if ffmpeg_process.poll() is not None:
+                            break
+                        time.sleep(1)
 
-                    if process.returncode != 0:
+                    # بعد الانتهاء نقرأ stderr
+                    stderr_output = ffmpeg_process.stderr.read().decode(errors="ignore")
+
+                    if ffmpeg_process.returncode != 0:
                         print(f"❌ FFmpeg error في {filename}")
-                        print(stderr.decode(errors="ignore"))
+                        print(stderr_output)
                     else:
                         print(f"✅ انتهت سورة {sura_name}")
 
                 except Exception as e:
                     print(f"🔥 FFmpeg crash: {e}")
 
+                finally:
+                    ffmpeg_process = None
+    
+                
                 # الانتقال للسورة التالية
                 index += 1
 
@@ -389,7 +405,48 @@ def setreciter(message):
             json.dump(config, f)
 
     bot.reply_to(message, f"Switched to {name}")
-    
+
+
+
+@bot.message_handler(commands=['setsura'])
+def setsura(message):
+    global ffmpeg_process
+
+    if not is_admin(message.from_user.id):
+        bot.reply_to(message, "غير مصرح.")
+        return
+
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.reply_to(message, "Usage: /setsura 2")
+        return
+
+    try:
+        sura_number = int(parts[1])
+        if not (1 <= sura_number <= 114):
+            raise ValueError
+
+        new_index = sura_number - 1
+
+        with config_lock:
+            with open(CONFIG_FILE, "r") as f:
+                config = json.load(f)
+
+            config["current_index"] = new_index
+
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(config, f)
+
+        # 🔥 قتل ffmpeg الحالي فوراً
+        if ffmpeg_process and ffmpeg_process.poll() is None:
+            ffmpeg_process.kill()
+            print("⛔ تم إيقاف السورة الحالية")
+
+        bot.reply_to(message, f"✅ سيتم الانتقال إلى سورة {SURA_NAMES[str(sura_number).zfill(3)]}")
+
+    except:
+        bot.reply_to(message, "رقم سورة غير صحيح.")
+
 
 
 @bot.message_handler(commands=['buildreciter'])
@@ -516,3 +573,4 @@ if __name__ == "__main__":
     # Bot polling (في Main Thread)
     print("Bot started...")
     bot.infinity_polling()
+
