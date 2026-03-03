@@ -207,6 +207,7 @@ def create_playlist(reciter):
 
 # ====== البث الذكي ======
 def stream_loop():
+    global ffmpeg_process
     current_reciter = None
     playlist = []
 
@@ -263,7 +264,7 @@ def stream_loop():
 
                 print(f"📖 الآن بث سورة {sura_name}")
 
-                global ffmpeg_process
+                
 
                 command = [
                     "ffmpeg",
