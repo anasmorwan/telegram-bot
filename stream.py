@@ -146,6 +146,8 @@ SURA_NAMES = {
 
 
 START_TIME = time.time()
+from threading import Lock
+config_lock = Lock()
 # ====== قراءة القارئ الحالي ======
 def get_current_reciter():
     with open(CONFIG_FILE, "r") as f:
@@ -222,8 +224,9 @@ def stream_loop():
                     continue
 
             # ===== قراءة config =====
-            with open(CONFIG_FILE, "r") as f:
-                config = json.load(f)
+            with config_lock:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
 
             index = config.get("current_index", 0)
 
@@ -285,8 +288,9 @@ def stream_loop():
 
                 # تحديث config
                 try:
-                    with open(CONFIG_FILE, "r") as f:
-                        config = json.load(f)
+                    with config_lock:
+                        with open(CONFIG_FILE, "w") as f:
+                            json.dump(config, f)
 
                     config["current_index"] = index
 
@@ -374,11 +378,18 @@ def setreciter(message):
         bot.reply_to(message, "Reciter not found.")
         return
 
-    with open(CONFIG_FILE, "w") as f:
-        json.dump({"reciter": name, "current_index": 0}, f)
+    with config_lock:
+        with open(CONFIG_FILE, "r") as f:
+            config = json.load(f)
+
+        config["reciter"] = name
+        config["current_index"] = 0
+
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f)
 
     bot.reply_to(message, f"Switched to {name}")
-
+    
 
 
 @bot.message_handler(commands=['buildreciter'])
