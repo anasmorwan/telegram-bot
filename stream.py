@@ -215,8 +215,14 @@ def stream_loop():
             reciter = get_current_reciter()
 
             # ===== عند تغيير القارئ =====
-            if reciter != current_reciter:
-                print(f"🔄 Switching to reciter: {reciter}")
+            if get_current_reciter() != current_reciter:
+                print("🔁 تم تغيير القارئ أثناء التشغيل")
+
+                if ffmpeg_process and ffmpeg_process.poll() is None:
+                    ffmpeg_process.kill()
+                    print("⛔ تم قتل البث الحالي لتغيير القارئ")
+
+                break
                 download_suras(reciter)
                 playlist = create_playlist(reciter)
                 current_reciter = reciter
@@ -298,24 +304,21 @@ def stream_loop():
                 finally:
                     ffmpeg_process = None
     
-                
                 # الانتقال للسورة التالية
                 index += 1
 
-                # تحديث config
+                # تحديث config بشكل صحيح
                 try:
                     with config_lock:
+                        config["current_index"] = index
+
                         with open(CONFIG_FILE, "w") as f:
                             json.dump(config, f)
-
-                    config["current_index"] = index
-
-                    with open(CONFIG_FILE, "w") as f:
-                        json.dump(config, f)
 
                 except Exception as e:
                     print(f"⚠️ خطأ في تحديث config: {e}")
 
+            
             # ===== عند انتهاء الختمة =====
             if index >= len(playlist):
                 print("🎉 اكتملت الختمة — إعادة من البداية")
@@ -431,8 +434,9 @@ def setsura(message):
         with config_lock:
             with open(CONFIG_FILE, "r") as f:
                 config = json.load(f)
+            config["reciter"] = name
 
-            config["current_index"] = new_index
+        
 
             with open(CONFIG_FILE, "w") as f:
                 json.dump(config, f)
