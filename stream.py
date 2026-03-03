@@ -142,6 +142,10 @@ SURA_NAMES = {
     "113": "الفلق",
     "114": "الناس"
 }
+
+
+
+START_TIME = time.time()
 # ====== قراءة القارئ الحالي ======
 def get_current_reciter():
     with open(CONFIG_FILE, "r") as f:
@@ -216,17 +220,7 @@ def stream_loop():
             sura_number = filename.split(".")[0]
             sura_name = SURA_NAMES.get(sura_number, sura_number)
 
-            message_text = f"""
-            📖 الآن يتم بث:
-            القارئ: {current_reciter}
-            السورة: {sura_name}
-            """
-
-            try:
-                bot.send_message(ADMIN_ID, message_text)
-            except Exception as e:
-                print("Failed to send Telegram notification:", e)
-
+            
             command = [
                 "ffmpeg",
                 "-re",
@@ -270,6 +264,10 @@ def stream_loop():
             with open(CONFIG_FILE, "r") as f:
                 config = json.load(f)
 
+            # زيادة عداد الختمات
+            khatmat = config.get("khatmat", 0)
+            config["khatmat"] = khatmat + 1
+
             config["current_index"] = 0
 
             with open(CONFIG_FILE, "w") as f:
@@ -292,6 +290,8 @@ def start(message):
 
 @bot.message_handler(commands=['status'])
 def status(message):
+    uptime_seconds = int(time.time() - START_TIME)
+    uptime_hours = uptime_seconds // 3600
     if not is_admin(message.from_user.id):
         bot.reply_to(message, "غير مصرح.")
         return
@@ -299,8 +299,23 @@ def status(message):
     with open(CONFIG_FILE, "r") as f:
         config = json.load(f)
 
-    bot.reply_to(message, f"Current reciter: {config.get('reciter')}")
+    reciter = config.get("reciter", "غير معروف")
+    index = config.get("current_index", 0)
 
+    sura_number = str(index + 1).zfill(3)
+    sura_name = SURA_NAMES.get(sura_number, sura_number)
+
+    khatmat = config.get("khatmat", 0)
+
+    bot.reply_to(message, f"""
+    📖 الحالة الحالية:
+
+    القارئ: {reciter}
+    السورة: {sura_name}
+
+    عدد الختمات: {khatmat}
+    ساعات البث: {uptime_hours} ساعة
+    """)
 
 @bot.message_handler(commands=['setreciter'])
 def setreciter(message):
