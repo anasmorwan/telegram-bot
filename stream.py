@@ -465,4 +465,4 @@ if __name__ == "__main__":
     # Bot polling (في Main Thread)
     print("Bot started...")
     bot.infinity_polling()
-    stream_loop()
+    
