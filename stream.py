@@ -217,19 +217,26 @@ def stream_loop():
 
             # ===== عند تغيير القارئ =====
             if get_current_reciter() != current_reciter:
-                print("🔁 تم تغيير القارئ أثناء التشغيل")
+                print(f"🔄 Switching to new reciter: {reciter}")
 
+                # قتل ffmpeg الحالي
                 if ffmpeg_process and ffmpeg_process.poll() is None:
                     ffmpeg_process.kill()
                     print("⛔ تم قتل البث الحالي لتغيير القارئ")
 
-                break
+                # تحميل السور للقارئ الجديد
                 download_suras(reciter)
                 playlist = create_playlist(reciter)
                 current_reciter = reciter
 
+                # نقرأ المؤشر من config الحالي (لا نعيده للصفر)
+                with config_lock:
+                    with open(CONFIG_FILE, "r") as f:
+                        config = json.load(f)
+                    index = config.get("current_index", 0)
+
                 if not playlist:
-                    print("⚠️ لا توجد ملفات صوتية — انتظار 60 ثانية")
+                    print("⚠️ لا توجد ملفات صوتية للقارئ الجديد — انتظار 60 ثانية")
                     time.sleep(60)
                     continue
 
@@ -403,7 +410,8 @@ def setreciter(message):
             config = json.load(f)
 
         config["reciter"] = name
-        config["current_index"] = 0
+        # لا تعيد index = 0
+        # config["current_index"] = 0  ← هذا يحذف
 
         with open(CONFIG_FILE, "w") as f:
             json.dump(config, f)
