@@ -160,7 +160,7 @@ def get_current_reciter():
 # ====== تحميل سور قارئ محدد ======
 def download_and_prepare_sura(reciter, index):
     """
-    تحميل سورة واحدة فقط وتحويلها إلى AAC
+    تحميل سورة واحدة فقط وتحويلها إلى AAC بذكاء
     """
     reciter_folder = os.path.join(RECITERS_FOLDER, reciter)
     audio_folder = os.path.join(reciter_folder, "audio")
@@ -169,28 +169,25 @@ def download_and_prepare_sura(reciter, index):
     os.makedirs(audio_folder, exist_ok=True)
 
     if not os.path.exists(suras_file):
-        print("❌ suras.txt غير موجود")
+        print(f"❌ ملف {suras_file} غير موجود")
         return None
 
+    # قراءة الملف مع تجاهل الأسطر الفارغة وأسطر التعليقات التي تبدأ بـ #
     with open(suras_file, "r") as f:
-        lines = f.readlines()
+        lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
+    # التحقق من انتهاء الختمة
     if index >= len(lines):
-        return None
+        return "END_OF_KHATMAH"
 
-    line = lines[index].strip()
-    if "|" not in line:
-        return None
-
-    filename_mp3, url = line.split("|")
-    filename_mp3 = filename_mp3.strip()
-    url = url.strip()
-
+    url = lines[index]
+    # استخراج اسم الملف من الرابط مباشرة
+    filename_mp3 = url.split("/")[-1]
     filepath_mp3 = os.path.join(audio_folder, filename_mp3)
     filename_aac = filename_mp3.replace(".mp3", ".aac")
     filepath_aac = os.path.join(audio_folder, filename_aac)
 
-    # إذا موجود مسبقًا لا تعيد تحميله
+    # إذا ملف aac موجود مسبقًا لا تعيد تحميله
     if os.path.exists(filepath_aac):
         return filepath_aac
 
@@ -204,31 +201,33 @@ def download_and_prepare_sura(reciter, index):
             for chunk in r.iter_content(8192):
                 f.write(chunk)
 
-        print("🔄 تحويل إلى AAC ...")
+        print("🔄 تحويل إلى AAC لتقليل استهلاك المعالج أثناء البث...")
 
         convert_cmd = [
             "ffmpeg", "-y",
             "-i", filepath_mp3,
             "-c:a", "aac",
             "-b:a", "128k",
+            "-ar", "44100",
             filepath_aac
         ]
 
-        result = subprocess.run(convert_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        subprocess.run(convert_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        if result.returncode != 0:
-            print("❌ فشل التحويل:", result.stderr.decode(errors="ignore"))
+        # حذف ملف MP3 الأصلي لتوفير المساحة بعد التحويل
+        if os.path.exists(filepath_aac):
             os.remove(filepath_mp3)
+            print("✅ جاهزة للبث")
+            return filepath_aac
+        else:
             return None
-
-        os.remove(filepath_mp3)
-        print("✅ جاهزة للبث")
-
-        return filepath_aac
 
     except Exception as e:
         print("🔥 خطأ في التحميل:", e)
+        if os.path.exists(filepath_mp3):
+            os.remove(filepath_mp3)
         return None
+
 
 
 
@@ -337,7 +336,6 @@ def stream_loop():
 
     while True:
         try:
-            # قراءة الإعدادات
             with config_lock:
                 with open(CONFIG_FILE, "r") as f:
                     config = json.load(f)
@@ -345,25 +343,33 @@ def stream_loop():
             config_reciter = config.get("reciter")
             config_index = config.get("current_index", 0)
 
-            # إذا تغير القارئ أو السورة
+            # إذا تغير القارئ أو السورة عبر أوامر تيليغرام
             if config_reciter != current_reciter or config_index != index:
                 print(f"🔄 تغيير مكتشف -> القارئ: {config_reciter}, السورة: {config_index+1}")
                 current_reciter = config_reciter
                 index = config_index
 
-                # قتل ffmpeg إن كان يعمل
                 if ffmpeg_process and ffmpeg_process.poll() is None:
                     try:
                         ffmpeg_process.kill()
-                        ffmpeg_process.wait()
-                        print("⛔ تم إيقاف البث القديم")
+                        ffmpeg_process.wait(timeout=2)
+                        print("⛔ تم إيقاف البث القديم لتطبيق التغيير")
                     except Exception as e:
-                        print("⚠️ خطأ أثناء قتل ffmpeg:", e)
+                        pass
 
-            # تحميل سورة واحدة فقط
+            # تحميل وتجهيز السورة
             filepath = download_and_prepare_sura(current_reciter, index)
 
-            if not filepath:
+            if filepath == "END_OF_KHATMAH":
+                print("🎉 اكتملت الختمة — إعادة من البداية")
+                index = 0
+                with config_lock:
+                    config["current_index"] = 0
+                    config["khatmat"] = config.get("khatmat", 0) + 1
+                    with open(CONFIG_FILE, "w") as f:
+                        json.dump(config, f)
+                continue
+            elif not filepath:
                 print("❌ فشل تحميل السورة — إعادة المحاولة بعد 5 ثواني")
                 time.sleep(5)
                 continue
@@ -371,17 +377,17 @@ def stream_loop():
             filename = os.path.basename(filepath)
             sura_number = filename.split(".")[0]
             sura_name = SURA_NAMES.get(sura_number, sura_number)
-            print("filepath =", filepath)
 
             print(f"📖 بدء بث سورة {sura_name} — القارئ: {current_reciter}")
 
-            # أمر البث
+            # أمر البث (يستهلك 0% معالج بفضل -acodec copy)
             command = [
                 "ffmpeg",
                 "-re",
                 "-i", filepath,
                 "-vn",
                 "-acodec", "copy",
+                "-flvflags", "no_duration_filesize",  # ضروري لمنع التقطيع مع تيليغرام
                 "-f", "flv",
                 FULL_STREAM_URL
             ]
@@ -389,26 +395,33 @@ def stream_loop():
             ffmpeg_process = subprocess.Popen(
                 command,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE
+                stderr=subprocess.DEVNULL
             )
 
-            # انتظار انتهاء السورة
+            # انتظار انتهاء البث بهدوء
             while ffmpeg_process.poll() is None:
                 time.sleep(1)
 
-            # فحص الأخطاء
-            stderr_output = ffmpeg_process.stderr.read().decode(errors="ignore")
-            if ffmpeg_process.returncode != 0:
-                print("❌ خطأ في FFmpeg:")
-                print(stderr_output)
-                time.sleep(3)
-                continue
+            # === التحقق مما إذا كان التوقف بسبب تدخل من المستخدم ===
+            with config_lock:
+                with open(CONFIG_FILE, "r") as f:
+                    latest_config = json.load(f)
+
+            if latest_config.get("reciter") != current_reciter or latest_config.get("current_index") != index:
+                print("🔁 تم التدخل البشري، سيتم تطبيق الإعدادات الجديدة فوراً.")
+                # نحذف السورة الحالية التي لم تكتمل لتوفير المساحة
+                try:
+                    if os.path.exists(filepath): os.remove(filepath)
+                except: pass
+                continue # نعود لأعلى الحلقة لتطبيق التغييرات
 
             print(f"✅ انتهت سورة {sura_name}")
 
-            # حذف الملف بعد البث
+            # حذف الملف بعد الانتهاء الطبيعي لتوفير المساحة
             try:
-                os.remove(filepath)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    print(f"🗑️ تم مسح {filename} لتوفير المساحة")
             except:
                 pass
 
@@ -416,13 +429,19 @@ def stream_loop():
             index += 1
 
             with config_lock:
-                config["current_index"] = index
+                latest_config["current_index"] = index
                 with open(CONFIG_FILE, "w") as f:
-                    json.dump(config, f)
+                    json.dump(latest_config, f)
 
         except Exception as e:
             print("💥 خطأ عام في stream_loop:", e)
             time.sleep(5)
+        finally:
+            # ضمان عدم ترك عمليات ميتة
+            if ffmpeg_process and ffmpeg_process.poll() is None:
+                try:
+                    ffmpeg_process.kill()
+                except: pass
 
 
 def is_admin(user_id):
