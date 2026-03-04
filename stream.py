@@ -333,12 +333,11 @@ def cleanup_old_files(current_index, playlist, keep_backward=2, keep_forward=3):
 def stream_loop():
     global ffmpeg_process
     current_reciter = None
-    playlist = []
     index = 0
 
     while True:
         try:
-            # قراءة config مرة واحدة قبل بدء السورة
+            # قراءة الإعدادات
             with config_lock:
                 with open(CONFIG_FILE, "r") as f:
                     config = json.load(f)
@@ -346,54 +345,36 @@ def stream_loop():
             config_reciter = config.get("reciter")
             config_index = config.get("current_index", 0)
 
-            # ===== تحقق من التغييرات =====
+            # إذا تغير القارئ أو السورة
             if config_reciter != current_reciter or config_index != index:
                 print(f"🔄 تغيير مكتشف -> القارئ: {config_reciter}, السورة: {config_index+1}")
                 current_reciter = config_reciter
                 index = config_index
 
-                download_suras(current_reciter)
-                playlist = create_playlist(current_reciter)
+                # قتل ffmpeg إن كان يعمل
+                if ffmpeg_process and ffmpeg_process.poll() is None:
+                    try:
+                        ffmpeg_process.kill()
+                        ffmpeg_process.wait()
+                        print("⛔ تم إيقاف البث القديم")
+                    except Exception as e:
+                        print("⚠️ خطأ أثناء قتل ffmpeg:", e)
 
-                if not playlist:
-                    print("⚠️ لا توجد ملفات صوتية — انتظار 10 ثواني")
-                    time.sleep(10)
-                    continue
+            # تحميل سورة واحدة فقط
+            filepath = download_and_prepare_sura(current_reciter, index)
 
-            # ===== التحقق من نهاية القائمة =====
-            if index >= len(playlist):
-                print("🎉 اكتملت الختمة — إعادة من البداية")
-                index = 0
-                with config_lock:
-                    config["current_index"] = 0
-                    config["khatmat"] = config.get("khatmat", 0) + 1
-                    with open(CONFIG_FILE, "w") as f:
-                        json.dump(config, f)
+            if not filepath:
+                print("❌ فشل تحميل السورة — إعادة المحاولة بعد 5 ثواني")
+                time.sleep(5)
                 continue
 
-            # ===== تشغيل السورة الحالية =====
-            # الآن المعالج سيعمل بنسبة 0% تقريباً لأننا ننسخ الصوت فقط
-            # تحميل السورة الحالية فقط
-            filepath = download_and_prepare_sura(current_reciter, index)
             filename = os.path.basename(filepath)
             sura_number = filename.split(".")[0]
             sura_name = SURA_NAMES.get(sura_number, sura_number)
-            print(f"📖 الآن بث سورة {sura_name} — القارئ: {current_reciter}")
 
+            print(f"📖 بدء بث سورة {sura_name} — القارئ: {current_reciter}")
 
-            if not filepath:
-                print("⚠️ فشل تحميل السورة — محاولة التالية")
-                index += 1
-                continue
-
-            with config_lock:
-                config["current_index"] = index
-                with open(CONFIG_FILE, "w") as f:
-                    json.dump(config, f)
-                continue
-            
-            print(f"📖 الآن بث سورة رقم {index + 1}")
-
+            # أمر البث
             command = [
                 "ffmpeg",
                 "-re",
@@ -409,72 +390,38 @@ def stream_loop():
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE
             )
-            
-            cleanup_old_files(index, playlist, keep_backward=2, keep_forward=3)
-            
-            # ... داخل stream_loop بعد تشغيل ffmpeg_process ...
-            
-            # تنظيف الملفات القديمة (نحتفظ بـ 2 للخلف و 3 للأمام فقط)
-            
-            
 
-            # ننتظر بهدوء حتى تنتهي العملية، لا داعي لقراءة JSON كل ثانية! 
-            # أوامر البوت ستقوم بقتل العملية عند التغيير وهذا الـ loop سيكسر تلقائياً
+            # انتظار انتهاء السورة
             while ffmpeg_process.poll() is None:
                 time.sleep(1)
 
-            # قراءة stderr بعد النهاية
-            try:
-                stderr_output = ffmpeg_process.stderr.read().decode(errors="ignore")
-            except Exception:
-                stderr_output = ""
-
+            # فحص الأخطاء
+            stderr_output = ffmpeg_process.stderr.read().decode(errors="ignore")
             if ffmpeg_process.returncode != 0:
-                print(f"❌ FFmpeg stream error for {sura_name}:")
+                print("❌ خطأ في FFmpeg:")
                 print(stderr_output)
+                time.sleep(3)
+                continue
 
-            # حذف السورة بعد البث لتوفير المساحة
+            print(f"✅ انتهت سورة {sura_name}")
+
+            # حذف الملف بعد البث
             try:
                 os.remove(filepath)
             except:
                 pass
 
-            # === التحقق من سبب التوقف (طبيعي أم بتدخل المستخدم؟) ===
-            with config_lock:
-                with open(CONFIG_FILE, "r") as f:
-                    latest_config = json.load(f)
-            
-            # إذا كان التوقف بسبب تغيير المستخدم (قارئ أو سورة)، لا نزيد الـ index!
-            if latest_config.get("reciter") != current_reciter or latest_config.get("current_index", 0) != index:
-                print("🔁 تم التدخل البشري وتغيير الإعدادات، سيتم تطبيقها فوراً.")
-                continue # نعود لبداية الـ Loop لتطبيق التغيير
-            
-            # إذا انتهت السورة طبيعياً أو حدث انقطاع في الإنترنت
-            if ffmpeg_process.returncode != 0:
-                print(f"❌ خطأ FFmpeg (قد يكون انقطاع شبكة). إعادة المحاولة بعد 3 ثوانٍ...")
-                time.sleep(3)
-                # نزيد الـ index لننتقل للسورة التالية حتى لا يعلق البث
-            
-            print(f"✅ انتهت سورة {sura_name}")
+            # الانتقال للسورة التالية
             index += 1
-            
+
             with config_lock:
-                latest_config["current_index"] = index
+                config["current_index"] = index
                 with open(CONFIG_FILE, "w") as f:
-                    json.dump(latest_config, f)
+                    json.dump(config, f)
 
         except Exception as e:
-            print(f"💥 خطأ عام في stream_loop: {e}")
+            print("💥 خطأ عام في stream_loop:", e)
             time.sleep(5)
-        finally:
-            # ضمان عدم ترك أي Zombie Processes
-            if ffmpeg_process and ffmpeg_process.poll() is None:
-                try:
-                    ffmpeg_process.kill()
-                    ffmpeg_process.wait(timeout=2)
-                except Exception:
-                    pass
-            ffmpeg_process = None
 
 
 def is_admin(user_id):
