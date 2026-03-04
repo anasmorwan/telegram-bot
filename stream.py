@@ -278,7 +278,7 @@ def download_suras(reciter):
                     print(f"❌ فشل تحويل {filename_mp3} -> {res.stderr.decode(errors='ignore')}")
                 # حذف ملف MP3 الأصلي لتوفير المساحة
                 if os.path.exists(filepath_mp3):
-                        os.remove(filepath_mp3)
+                    os.remove(filepath_mp3)
                     continue
 
                 # حذف ملف MP3 الأصلي لتوفير المساحة (بعد نجاح التحويل)
