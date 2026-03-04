@@ -371,6 +371,7 @@ def stream_loop():
             filename = os.path.basename(filepath)
             sura_number = filename.split(".")[0]
             sura_name = SURA_NAMES.get(sura_number, sura_number)
+            print("filepath =", filepath)
 
             print(f"📖 بدء بث سورة {sura_name} — القارئ: {current_reciter}")
 
