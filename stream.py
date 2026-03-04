@@ -326,7 +326,6 @@ def cleanup_old_files(current_index, playlist, keep_backward=2, keep_forward=3):
 
 
 
-
 # ====== البث الذكي ======
 # ====== البث الذكي ======
 def stream_loop():
@@ -339,15 +338,25 @@ def stream_loop():
             with config_lock:
                 with open(CONFIG_FILE, "r") as f:
                     config = json.load(f)
+                    
+            is_streaming = config.get("is_streaming", True)
+            if not is_streaming:
+                if ffmpeg_process and ffmpeg_process.poll() is None:
+                    ffmpeg_process.kill()
+                    print("🛑 تم إيقاف عملية FFmpeg لأن البث معطل.")
+                time.sleep(5) # انتظر 5 ثواني قبل الفحص مرة أخرى
+                continue
 
             config_reciter = config.get("reciter")
             config_index = config.get("current_index", 0)
 
             # إذا تغير القارئ أو السورة عبر أوامر تيليغرام
             if config_reciter != current_reciter or config_index != index:
-                print(f"🔄 تغيير مكتشف -> القارئ: {config_reciter}, السورة: {config_index+1}")
                 current_reciter = config_reciter
                 index = config_index
+                if ffmpeg_process and ffmpeg_process.poll() is None:
+                    ffmpeg_process.kill()
+                    ffmpeg_process.wait()
 
                 if ffmpeg_process and ffmpeg_process.poll() is None:
                     try:
@@ -572,6 +581,60 @@ def setsura(message):
         bot.reply_to(message, "❌ رقم سورة غير صحيح. اختر من 1 إلى 114.")
     except Exception as e:
         bot.reply_to(message, f"🔥 خطأ غير متوقع: {e}")
+
+# أمر إيقاف البث
+@bot.message_handler(commands=['stopstream'])
+def stop_stream(message):
+    if not is_admin(message.from_user.id): return
+    
+    with config_lock:
+        with open(CONFIG_FILE, "r") as f:
+            config = json.load(f)
+        config["is_streaming"] = False
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f)
+            
+    if ffmpeg_process and ffmpeg_process.poll() is None:
+        ffmpeg_process.kill()
+    
+    bot.reply_to(message, "🛑 تم إيقاف البث بنجاح. لن يتم تحميل أي سور جديدة.")
+
+# أمر تشغيل البث
+@bot.message_handler(commands=['startstream'])
+def start_stream(message):
+    if not is_admin(message.from_user.id): return
+    
+    with config_lock:
+        with open(CONFIG_FILE, "r") as f:
+            config = json.load(f)
+        config["is_streaming"] = True
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f)
+            
+    bot.reply_to(message, "▶️ تم تفعيل البث. سيبدأ العمل خلال لحظات...")
+
+# أمر إعادة التشغيل (في حال حدوث مشكلة)
+@bot.message_handler(commands=['restartstream'])
+def restart_stream(message):
+    if not is_admin(message.from_user.id): return
+    
+    bot.reply_to(message, "🔄 جاري إعادة تشغيل عملية البث...")
+    
+    # قتل العملية الحالية لإجبار Loop البث على البدء من جديد
+    if ffmpeg_process and ffmpeg_process.poll() is None:
+        ffmpeg_process.kill()
+    else:
+        # إذا كانت العملية متوقفة أصلاً، نتأكد من تفعيل العلم في config
+        with config_lock:
+            with open(CONFIG_FILE, "r") as f:
+                config = json.load(f)
+            config["is_streaming"] = True
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(config, f)
+
+
+
+
 
 @bot.message_handler(commands=['buildreciter'])
 def buildreciter(message):
