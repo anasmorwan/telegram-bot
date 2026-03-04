@@ -210,8 +210,8 @@ def stream_loop():
     """
     حلقة البث المحسنة:
     - أي تغيير للقارئ أو السورة يحدث فورًا
-    - التعامل مع الأخطاء المتوقعة
     - دعم استمرارية البث مع حفظ current_index
+    - التعامل مع الأخطاء المتوقعة
     """
     global ffmpeg_process
     current_reciter = None
@@ -220,25 +220,24 @@ def stream_loop():
 
     while True:
         try:
-            # جلب config بأمان
-            try:
-                with config_lock:
+            # قراءة config بأمان
+            with config_lock:
+                try:
                     with open(CONFIG_FILE, "r") as f:
                         config = json.load(f)
-            except Exception as e:
-                print(f"⚠️ خطأ قراءة config: {e}")
-                time.sleep(5)
-                continue
+                except Exception as e:
+                    print(f"⚠️ خطأ قراءة config: {e}")
+                    time.sleep(5)
+                    continue
 
-            # قارئ وسورة من config
             config_reciter = config.get("reciter")
             config_index = config.get("current_index", 0)
 
             # ===== تحقق من تغيير القارئ أو السورة =====
             if config_reciter != current_reciter or config_index != index:
-                print(f"🔄 Detected change -> reciter: {config_reciter}, index: {config_index} (was {current_reciter}, {index})")
+                print(f"🔄 تغيير مكتشف -> القارئ: {config_reciter}, السورة: {config_index+1}")
 
-                # قتل ffmpeg الحالي فورًا
+                # إيقاف البث الحالي فورًا إذا كان يعمل
                 if ffmpeg_process and ffmpeg_process.poll() is None:
                     try:
                         ffmpeg_process.kill()
@@ -249,7 +248,7 @@ def stream_loop():
                 current_reciter = config_reciter
                 index = config_index
 
-                # تحميل السور وإنشاء قائمة التشغيل
+                # تحميل السور للقارئ الجديد وإنشاء قائمة التشغيل
                 download_suras(current_reciter)
                 playlist = create_playlist(current_reciter)
 
@@ -274,7 +273,6 @@ def stream_loop():
 
             # ===== تشغيل السورة الحالية =====
             filepath = playlist[index]
-
             if not os.path.exists(filepath):
                 print(f"⚠️ الملف غير موجود: {filepath} — سيتم تخطيه")
                 index += 1
@@ -290,7 +288,6 @@ def stream_loop():
             filename = os.path.basename(filepath)
             sura_number = filename.split(".")[0]
             sura_name = SURA_NAMES.get(sura_number, sura_number)
-
             print(f"📖 الآن بث سورة {sura_name} — القارئ: {current_reciter}")
 
             # أمر FFmpeg للبث
@@ -314,10 +311,11 @@ def stream_loop():
 
                 # انتظار العملية مع فحص التغييرات كل ثانية
                 while True:
-                    # إذا تغير القارئ أو السورة في config -> أوقف فورًا
                     with config_lock:
                         with open(CONFIG_FILE, "r") as f:
                             cfg = json.load(f)
+
+                    # إذا تغير القارئ أو السورة -> إيقاف FFmpeg فورًا
                     if cfg.get("reciter") != current_reciter or cfg.get("current_index", 0) != index:
                         print("🔁 تغيير تم أثناء البث — إيقاف FFmpeg لتطبيقه فورًا")
                         ffmpeg_process.kill()
@@ -325,6 +323,7 @@ def stream_loop():
 
                     if ffmpeg_process.poll() is not None:
                         break
+
                     time.sleep(1)
 
                 # قراءة stderr بعد انتهاء ffmpeg
@@ -357,7 +356,6 @@ def stream_loop():
         except Exception as e:
             print(f"💥 خطأ عام في stream_loop: {e}")
             time.sleep(5)
-
 
 
 def is_admin(user_id):
@@ -432,18 +430,17 @@ def setreciter(message):
     bot.reply_to(message, f"Switched to {name}")
 
 
-
 @bot.message_handler(commands=['setsura'])
 def setsura(message):
     global ffmpeg_process
 
     if not is_admin(message.from_user.id):
-        bot.reply_to(message, "غير مصرح.")
+        bot.reply_to(message, "❌ غير مصرح لك.")
         return
 
     parts = message.text.split()
     if len(parts) < 2:
-        bot.reply_to(message, "Usage: /setsura 2")
+        bot.reply_to(message, "⚠️ الاستخدام الصحيح: /setsura 2")
         return
 
     try:
@@ -451,29 +448,33 @@ def setsura(message):
         if not (1 <= sura_number <= 114):
             raise ValueError
 
-        new_index = sura_number - 1
+        new_index = sura_number - 1  # تحويل الرقم إلى فهرس 0-based
 
+        # تحديث config مع index الجديد فقط (لا نغير القارئ هنا)
         with config_lock:
             with open(CONFIG_FILE, "r") as f:
                 config = json.load(f)
-            config["reciter"] = name
 
-        
+            config["current_index"] = new_index
 
             with open(CONFIG_FILE, "w") as f:
                 json.dump(config, f)
 
-        # 🔥 قتل ffmpeg الحالي فوراً
+        # إيقاف البث الحالي فورًا ليبدأ من السورة الجديدة
         if ffmpeg_process and ffmpeg_process.poll() is None:
-            ffmpeg_process.kill()
-            print("⛔ تم إيقاف السورة الحالية")
+            try:
+                ffmpeg_process.kill()
+                print("⛔ تم إيقاف السورة الحالية لتطبيق السورة الجديدة")
+            except Exception as e:
+                print(f"⚠️ خطأ عند قتل ffmpeg: {e}")
 
-        bot.reply_to(message, f"✅ سيتم الانتقال إلى سورة {SURA_NAMES[str(sura_number).zfill(3)]}")
+        sura_name = SURA_NAMES.get(str(sura_number).zfill(3), str(sura_number))
+        bot.reply_to(message, f"✅ سيتم الانتقال فورًا إلى سورة {sura_name}")
 
-    except:
-        bot.reply_to(message, "رقم سورة غير صحيح.")
-
-
+    except ValueError:
+        bot.reply_to(message, "❌ رقم سورة غير صحيح. اختر من 1 إلى 114.")
+    except Exception as e:
+        bot.reply_to(message, f"🔥 خطأ غير متوقع: {e}")
 
 @bot.message_handler(commands=['buildreciter'])
 def buildreciter(message):
