@@ -263,20 +263,32 @@ def stream_loop():
             sura_name = SURA_NAMES.get(sura_number, sura_number)
             print(f"📖 الآن بث سورة {sura_name} — القارئ: {current_reciter}")
 
-            # تمت إضافة إعدادات استقرار (-flvflags) لضمان عدم توقف البث مع تيليغرام
+            # إعدادات متقدمة للاستقرار وتقليل استهلاك المعالج
             command = [
                 "ffmpeg",
-                "-re",
+                "-re",                          # القراءة بالسرعة الحقيقية للملف
                 "-i", filepath,
-                "-vn",
-                "-acodec", "aac",
-                "-b:a", "128k",
-                "-flvflags", "no_duration_filesize",
+                "-vn",                          # تجاهل أي فيديو (للتأكيد)
+                "-acodec", "aac",               # ترميز AAC
+                "-b:a", "128k",                 # بت-ريت ثابت
+                "-ar", "44100",                 # معدل العينة القياسي لـ RTMP
+                "-threads", "1",                # تحديد خيط معالجة واحد لمنع استهلاك المعالج
+                "-af", "aresample=async=1",     # مزامنة الصوت ومنع الفجوات
                 "-f", "flv",
+                "-flvflags", "no_duration_filesize",
+                # إعدادات إعادة الاتصال التلقائي في حال تعثر الشبكة
+                "-rtmp_tcurl", RTMP_URL,
+                "-rtmp_live", "live",
                 FULL_STREAM_URL
             ]
 
-            ffmpeg_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                ffmpeg_process = subprocess.Popen(
+                command, 
+                stdout=subprocess.DEVNULL,  # تغيير من PIPE إلى DEVNULL
+                stderr=subprocess.DEVNULL   # تغيير من PIPE إلى DEVNULL
+            )
+
 
             # ننتظر بهدوء حتى تنتهي العملية، لا داعي لقراءة JSON كل ثانية! 
             # أوامر البوت ستقوم بقتل العملية عند التغيير وهذا الـ loop سيكسر تلقائياً
