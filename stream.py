@@ -289,6 +289,9 @@ def download_suras(reciter):
                         pass
                     print(f"✅ تم التحميل والتحويل: {filename_aac}")
                 time.sleep(3)
+            except Exception as e:
+                print(f"❌ محاولة فاشلة: {e}")
+                time.sleep(3)
 
             
 # ====== إنشاء قائمة تشغيل لقارئ ======
