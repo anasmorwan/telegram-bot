@@ -158,6 +158,80 @@ def get_current_reciter():
     return config["reciter"]
 
 # ====== تحميل سور قارئ محدد ======
+def download_and_prepare_sura(reciter, index):
+    """
+    تحميل سورة واحدة فقط وتحويلها إلى AAC
+    """
+    reciter_folder = os.path.join(RECITERS_FOLDER, reciter)
+    audio_folder = os.path.join(reciter_folder, "audio")
+    suras_file = os.path.join(reciter_folder, "suras.txt")
+
+    os.makedirs(audio_folder, exist_ok=True)
+
+    if not os.path.exists(suras_file):
+        print("❌ suras.txt غير موجود")
+        return None
+
+    with open(suras_file, "r") as f:
+        lines = f.readlines()
+
+    if index >= len(lines):
+        return None
+
+    line = lines[index].strip()
+    if "|" not in line:
+        return None
+
+    filename_mp3, url = line.split("|")
+    filename_mp3 = filename_mp3.strip()
+    url = url.strip()
+
+    filepath_mp3 = os.path.join(audio_folder, filename_mp3)
+    filename_aac = filename_mp3.replace(".mp3", ".aac")
+    filepath_aac = os.path.join(audio_folder, filename_aac)
+
+    # إذا موجود مسبقًا لا تعيد تحميله
+    if os.path.exists(filepath_aac):
+        return filepath_aac
+
+    print(f"⬇️ تحميل سورة {filename_mp3} ...")
+
+    try:
+        r = requests.get(url, stream=True, timeout=30)
+        r.raise_for_status()
+
+        with open(filepath_mp3, "wb") as f:
+            for chunk in r.iter_content(8192):
+                f.write(chunk)
+
+        print("🔄 تحويل إلى AAC ...")
+
+        convert_cmd = [
+            "ffmpeg", "-y",
+            "-i", filepath_mp3,
+            "-c:a", "aac",
+            "-b:a", "128k",
+            filepath_aac
+        ]
+
+        result = subprocess.run(convert_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+
+        if result.returncode != 0:
+            print("❌ فشل التحويل:", result.stderr.decode(errors="ignore"))
+            os.remove(filepath_mp3)
+            return None
+
+        os.remove(filepath_mp3)
+        print("✅ جاهزة للبث")
+
+        return filepath_aac
+
+    except Exception as e:
+        print("🔥 خطأ في التحميل:", e)
+        return None
+
+
+
 def download_suras(reciter):
     reciter_path = os.path.join(RECITERS_FOLDER, reciter)
     sura_list = os.path.join(reciter_path, "suras.txt")
@@ -295,44 +369,49 @@ def stream_loop():
                 continue
 
             # ===== تشغيل السورة الحالية =====
-            filepath = playlist[index]
-            if not os.path.exists(filepath):
-                index += 1
-                with config_lock:
-                    config["current_index"] = index
-                    with open(CONFIG_FILE, "w") as f:
-                        json.dump(config, f)
-                continue
-
+            # الآن المعالج سيعمل بنسبة 0% تقريباً لأننا ننسخ الصوت فقط
+            # تحميل السورة الحالية فقط
+            filepath = download_and_prepare_sura(current_reciter, index)
             filename = os.path.basename(filepath)
             sura_number = filename.split(".")[0]
             sura_name = SURA_NAMES.get(sura_number, sura_number)
             print(f"📖 الآن بث سورة {sura_name} — القارئ: {current_reciter}")
 
-            # الآن المعالج سيعمل بنسبة 0% تقريباً لأننا ننسخ الصوت فقط
+
+            if not filepath:
+                print("⚠️ فشل تحميل السورة — محاولة التالية")
+                index += 1
+                continue
+
+            with config_lock:
+                    config["current_index"] = index
+                    with open(CONFIG_FILE, "w") as f:
+                        json.dump(config, f)
+                continue
+            
+            print(f"📖 الآن بث سورة رقم {index + 1}")
+
             command = [
                 "ffmpeg",
                 "-re",
                 "-i", filepath,
                 "-vn",
-                "-acodec", "copy",  # تغيير جوهري: نسخ مباشر بدون معالجة
-                "-flvflags", "no_duration_filesize",
+                "-acodec", "copy",
                 "-f", "flv",
                 FULL_STREAM_URL
-             ]
-
-
+            ]
 
             ffmpeg_process = subprocess.Popen(
-                command, 
-                stdout=subprocess.DEVNULL,  # تغيير من PIPE إلى DEVNULL
-                stderr=subprocess.DEVNULL   # تغيير من PIPE إلى DEVNULL
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE
             )
-
+            
+            cleanup_old_files(index, playlist, keep_backward=2, keep_forward=3)
+            
             # ... داخل stream_loop بعد تشغيل ffmpeg_process ...
             
             # تنظيف الملفات القديمة (نحتفظ بـ 2 للخلف و 3 للأمام فقط)
-            cleanup_old_files(index, playlist, keep_backward=2, keep_forward=3)
             
             
 
@@ -350,6 +429,12 @@ def stream_loop():
             if ffmpeg_process.returncode != 0:
                 print(f"❌ FFmpeg stream error for {sura_name}:")
                 print(stderr_output)
+
+            # حذف السورة بعد البث لتوفير المساحة
+            try:
+                os.remove(filepath)
+            except:
+                pass
 
             # === التحقق من سبب التوقف (طبيعي أم بتدخل المستخدم؟) ===
             with config_lock:
