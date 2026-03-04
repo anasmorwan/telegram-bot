@@ -387,9 +387,9 @@ def stream_loop():
                 continue
 
             with config_lock:
-                    config["current_index"] = index
-                    with open(CONFIG_FILE, "w") as f:
-                        json.dump(config, f)
+                config["current_index"] = index
+                with open(CONFIG_FILE, "w") as f:
+                    json.dump(config, f)
                 continue
             
             print(f"📖 الآن بث سورة رقم {index + 1}")
