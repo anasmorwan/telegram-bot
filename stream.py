@@ -199,24 +199,30 @@ def download_suras(reciter):
                     "-acodec", "aac", "-b:a", "128k", "-ar", "44100",
                     filepath_aac, "-y"
                 ]
-                subprocess.run(convert_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                
+                res = subprocess.run(convert_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                if res.returncode != 0:
+                    print(f"❌ فشل تحويل {filename_mp3} -> {res.stderr.decode(errors='ignore')}")
                 # حذف ملف MP3 الأصلي لتوفير المساحة
-                if os.path.exists(filepath_aac):
-                    os.remove(filepath_mp3)
-                    print(f"✅ تم التحميل والتحويل: {filename_aac}")
-                break
+                if os.path.exists(filepath_mp3):
+                        os.remove(filepath_mp3)
+                    continue
 
-            except Exception as e:
-                print(f"❌ محاولة فاشلة: {e}")
-                if os.path.exists(filepath_mp3): os.remove(filepath_mp3)
+                # حذف ملف MP3 الأصلي لتوفير المساحة (بعد نجاح التحويل)
+                if os.path.exists(filepath_aac):
+                    try:
+                        os.remove(filepath_mp3)
+                    except Exception:
+                        pass
+                    print(f"✅ تم التحميل والتحويل: {filename_aac}")
                 time.sleep(3)
 
             
 # ====== إنشاء قائمة تشغيل لقارئ ======
 def create_playlist(reciter):
     audio_folder = os.path.join(RECITERS_FOLDER, reciter, "audio")
-    files = sorted(f for f in os.listdir(audio_folder) if f.endswith(".mp3"))
+    if not os.path.exists(audio_folder):
+        return []
+    files = sorted(f for f in os.listdir(audio_folder) if f.endswith((".aac", ".mp3")))
     return [os.path.join(audio_folder, f) for f in files]
 
 
@@ -334,6 +340,16 @@ def stream_loop():
             # أوامر البوت ستقوم بقتل العملية عند التغيير وهذا الـ loop سيكسر تلقائياً
             while ffmpeg_process.poll() is None:
                 time.sleep(1)
+
+            # قراءة stderr بعد النهاية
+            try:
+                stderr_output = ffmpeg_process.stderr.read().decode(errors="ignore")
+            except Exception:
+                stderr_output = ""
+
+            if ffmpeg_process.returncode != 0:
+                print(f"❌ FFmpeg stream error for {sura_name}:")
+                print(stderr_output)
 
             # === التحقق من سبب التوقف (طبيعي أم بتدخل المستخدم؟) ===
             with config_lock:
