@@ -173,37 +173,77 @@ def download_suras(reciter):
         urls = [line.strip() for line in f if line.strip()]
 
     for url in urls:
-        filename = url.split("/")[-1]
-        filepath = os.path.join(audio_folder, filename)
+        filename_mp3 = url.split("/")[-1]
+        filename_aac = filename_mp3.replace(".mp3", ".aac")
+        filepath_mp3 = os.path.join(audio_folder, filename_mp3)
+        filepath_aac = os.path.join(audio_folder, filename_aac)
 
-        if os.path.exists(filepath):
+        # إذا كان ملف AAC موجوداً مسبقاً، نتخطى العملية
+        if os.path.exists(filepath_aac):
             continue
 
         for attempt in range(3):
             try:
-                print(f"[{reciter}] Downloading {filename} (attempt {attempt+1})...")
+                print(f"[{reciter}] Downloading {filename_mp3}...")
                 r = requests.get(url, stream=True, timeout=60)
                 r.raise_for_status()
 
-                with open(filepath, "wb") as out:
+                with open(filepath_mp3, "wb") as out:
                     for chunk in r.iter_content(chunk_size=8192):
                         out.write(chunk)
 
-                print(f"✅ تم تحميل {filename}")
+                # --- عملية الترميز المسبق (CPU Workaround) ---
+                print(f"🔄 جاري تحويل {filename_mp3} إلى AAC لتقليل استهلاك CPU البث...")
+                convert_cmd = [
+                    "ffmpeg", "-i", filepath_mp3,
+                    "-acodec", "aac", "-b:a", "128k", "-ar", "44100",
+                    filepath_aac, "-y"
+                ]
+                subprocess.run(convert_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # حذف ملف MP3 الأصلي لتوفير المساحة
+                if os.path.exists(filepath_aac):
+                    os.remove(filepath_mp3)
+                    print(f"✅ تم التحميل والتحويل: {filename_aac}")
                 break
 
             except Exception as e:
                 print(f"❌ محاولة فاشلة: {e}")
+                if os.path.exists(filepath_mp3): os.remove(filepath_mp3)
                 time.sleep(3)
 
-        else:
-            print(f"⚠️ فشل تحميل {filename} بعد 3 محاولات — سيتم تجاوزه")
             
 # ====== إنشاء قائمة تشغيل لقارئ ======
 def create_playlist(reciter):
     audio_folder = os.path.join(RECITERS_FOLDER, reciter, "audio")
     files = sorted(f for f in os.listdir(audio_folder) if f.endswith(".mp3"))
     return [os.path.join(audio_folder, f) for f in files]
+
+
+
+def cleanup_old_files(current_index, playlist, keep_backward=2, keep_forward=3):
+    """
+    تحذف الملفات البعيدة عن السورة الحالية لتوفير المساحة.
+    keep_backward: عدد السور السابقة التي تود الاحتفاظ بها.
+    keep_forward: عدد السور القادمة التي تود الاحتفاظ بها (مهم لضمان عدم انقطاع البث).
+    """
+    try:
+        for i, filepath in enumerate(playlist):
+            # إذا كان الملف خارج نطاق السور التي نريد الاحتفاظ بها
+            if i < (current_index - keep_backward) or i > (current_index + keep_forward):
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    print(f"🗑️ تم حذف ملف قديم لتوفير مساحة: {os.path.basename(filepath)}")
+    except Exception as e:
+        print(f"⚠️ خطأ أثناء تنظيف الملفات: {e}")
+
+
+
+
+
+
+
+
 
 # ====== البث الذكي ======
 # ====== البث الذكي ======
@@ -263,32 +303,32 @@ def stream_loop():
             sura_name = SURA_NAMES.get(sura_number, sura_number)
             print(f"📖 الآن بث سورة {sura_name} — القارئ: {current_reciter}")
 
-            # إعدادات متقدمة للاستقرار وتقليل استهلاك المعالج
+            # الآن المعالج سيعمل بنسبة 0% تقريباً لأننا ننسخ الصوت فقط
             command = [
                 "ffmpeg",
-                "-re",                          # القراءة بالسرعة الحقيقية للملف
+                "-re",
                 "-i", filepath,
-                "-vn",                          # تجاهل أي فيديو (للتأكيد)
-                "-acodec", "aac",               # ترميز AAC
-                "-b:a", "128k",                 # بت-ريت ثابت
-                "-ar", "44100",                 # معدل العينة القياسي لـ RTMP
-                "-threads", "1",                # تحديد خيط معالجة واحد لمنع استهلاك المعالج
-                "-af", "aresample=async=1",     # مزامنة الصوت ومنع الفجوات
-                "-f", "flv",
+                "-vn",
+                "-acodec", "copy",  # تغيير جوهري: نسخ مباشر بدون معالجة
                 "-flvflags", "no_duration_filesize",
-                # إعدادات إعادة الاتصال التلقائي في حال تعثر الشبكة
-                "-rtmp_tcurl", RTMP_URL,
-                "-rtmp_live", "live",
+                "-f", "flv",
                 FULL_STREAM_URL
-            ]
+             ]
 
 
-                ffmpeg_process = subprocess.Popen(
+
+            ffmpeg_process = subprocess.Popen(
                 command, 
                 stdout=subprocess.DEVNULL,  # تغيير من PIPE إلى DEVNULL
                 stderr=subprocess.DEVNULL   # تغيير من PIPE إلى DEVNULL
             )
 
+            # ... داخل stream_loop بعد تشغيل ffmpeg_process ...
+            
+            # تنظيف الملفات القديمة (نحتفظ بـ 2 للخلف و 3 للأمام فقط)
+            cleanup_old_files(index, playlist, keep_backward=2, keep_forward=3)
+            
+            
 
             # ننتظر بهدوء حتى تنتهي العملية، لا داعي لقراءة JSON كل ثانية! 
             # أوامر البوت ستقوم بقتل العملية عند التغيير وهذا الـ loop سيكسر تلقائياً
