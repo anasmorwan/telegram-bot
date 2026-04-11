@@ -413,22 +413,10 @@ def stream_loop():
                 "ffmpeg",
                 "-re",
                 "-i", filepath,
-                "-loop", "1",
-                "-i", STATIC_IMAGE_PATH,
-                "-c:v", "libx264",
-                "-r", "5",                        # 5 إطارات/ث (أقل من 15 بكثير)
-                "-b:v", "30k",                    # قلل البت أيضًا
-                "-maxrate", "30k",
-                "-bufsize", "60k",
-                "-vf", "scale=1280:720,format=yuv420p",
-                "-c:a", "aac",                    # غيّر من copy إلى aac (المفتاح)
-                "-b:a", "128k",                   # حافظ على جودة الصوت
-                "-ar", "44100",
-                "-pix_fmt", "yuv420p",
-                "-g", "10",
-                "-shortest",
+                "-vn",
+                "-acodec", "copy",
+                "-flvflags", "no_duration_filesize",  # ضروري لمنع التقطيع مع تيليغرام
                 "-f", "flv",
-                "-flvflags", "no_duration_filesize",
                 FULL_STREAM_URL
             ]
 
