@@ -414,16 +414,21 @@ def stream_loop():
                 "-re",
                 "-i", filepath,
                 "-loop", "1",
-                "-i", PREPARED_IMAGE,
+                "-i", STATIC_IMAGE_PATH,
                 "-c:v", "libx264",
-                "-r", "2",                        # 2 إطار/ث
-                "-b:v", "20k",
+                "-r", "5",                        # 5 إطارات/ث (أقل من 15 بكثير)
+                "-b:v", "30k",                    # قلل البت أيضًا
+                "-maxrate", "30k",
+                "-bufsize", "60k",
                 "-vf", "scale=1280:720,format=yuv420p",
-                "-c:a", "aac",                    # أعد ترميز الصوت للمزامنة
-                "-b:a", "128k",
+                "-c:a", "aac",                    # غيّر من copy إلى aac (المفتاح)
+                "-b:a", "128k",                   # حافظ على جودة الصوت
                 "-ar", "44100",
+                "-pix_fmt", "yuv420p",
+                "-g", "10",
                 "-shortest",
                 "-f", "flv",
+                "-flvflags", "no_duration_filesize",
                 FULL_STREAM_URL
             ]
 
