@@ -397,20 +397,22 @@ def stream_loop():
             command = [
                 "ffmpeg",
                 "-re",
-                "-i", filepath,                    # مصدر الصوت (القرآن)
-                "-loop", "1",                      # تكرار الصورة إلى مالانهاية
-                "-i", STATIC_IMAGE_PATH,           # مصدر الصورة الثابتة
-                "-c:v", "libx264",                 # ترميز الفيديو
-                "-r", "0.1",                       # 0.1 إطار/ثانية = إطار كل 10 ثوانٍ
-                "-b:v", "20k",                     # معدل بت الفيديو 20 كيلوبت/ثانية (يوفر بيانات)
-                "-maxrate", "20k",
-                "-bufsize", "40k",
-                "-vf", "scale=1280:720",           # تحجيم الصورة (اختر الدقة التي تريدها)
-                "-c:a", "copy",                    # نسخ الصوت بدون إعادة ترميز
-                "-pix_fmt", "yuv420p",             # توافق مع جميع المنصات
-                "-g", "2",                         # مجموعة الإطارات (keyframe كل إطارين)
-                "-shortest",                       # يوقف البث عندما ينتهي الصوت
+                "-i", filepath,
+                "-loop", "1",
+                "-framerate", "1",  # مهم: يضمن وصول إطارات منتظمة
+                "-i", STATIC_IMAGE_PATH,
+                "-c:v", "libx264",
+                "-r", "1",  # 1 إطار في الثانية
+                "-b:v", "30k",
+                "-maxrate", "30k",
+                "-bufsize", "60k",
+                "-vf", "scale=1280:720,format=yuv420p",
+                "-c:a", "copy",
+                "-pix_fmt", "yuv420p",
+                "-g", "2",
+                "-shortest",
                 "-f", "flv",
+                "-flvflags", "no_duration_filesize",  # أضف هذا للتلفزيون
                 FULL_STREAM_URL
             ]
 
@@ -422,6 +424,7 @@ def stream_loop():
 
             # انتظار انتهاء البث بهدوء
             while ffmpeg_process.poll() is None:
+                print("FFmpeg is running")
                 time.sleep(1)
 
             # === التحقق مما إذا كان التوقف بسبب تدخل من المستخدم ===
