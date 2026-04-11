@@ -408,13 +408,21 @@ def stream_loop():
             PREPARED_IMAGE = prepare_image_ffmpeg(static_image_path)
 
 
+            # هذا هو الأمر الذي سيعمل بإذن الله
             command = [
                 "ffmpeg",
                 "-re",
                 "-i", filepath,
-                "-vn",
-                "-acodec", "copy",
-                "-flvflags", "no_duration_filesize",  # ضروري لمنع التقطيع مع تيليغرام
+                "-loop", "1",
+                "-i", PREPARED_IMAGE,
+                "-c:v", "libx264",
+                "-r", "2",                        # 2 إطار/ث
+                "-b:v", "20k",
+                "-vf", "scale=1280:720,format=yuv420p",
+                "-c:a", "aac",                    # أعد ترميز الصوت للمزامنة
+                "-b:a", "128k",
+                "-ar", "44100",
+                "-shortest",
                 "-f", "flv",
                 FULL_STREAM_URL
             ]
