@@ -152,6 +152,16 @@ from threading import Lock
 config_lock = Lock()
 ffmpeg_process = None
 
+# ====== تجهيز الصورة ======
+def prepare_image_ffmpeg(input_path, output_path="prepared.jpg"):
+    """تجهيز الصورة باستخدام ffmpeg فقط"""
+    subprocess.run([
+        "ffmpeg", "-i", input_path,
+        "-vf", "scale=1280:720:force_original_aspect_ratio=1,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
+        "-frames:v", "1", output_path, "-y"
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return output_path
+
 
 # ====== قراءة القارئ الحالي ======
 def get_current_reciter():
@@ -328,7 +338,7 @@ def cleanup_old_files(current_index, playlist, keep_backward=2, keep_forward=3):
 
 
 
-# ====== البث الذكي ======
+
 # ====== البث الذكي ======
 def stream_loop():
     global ffmpeg_process
@@ -393,28 +403,30 @@ def stream_loop():
 
             # أمر البث (يستهلك 0% معالج بفضل -acodec copy)
             # مسار الصورة الثابتة (ضع صورتك في نفس مجلد المشروع)
-            STATIC_IMAGE_PATH = "static_image.jpg"  # غير هذا المسار حسب صورتك
+            static_image_path = "static_image.jpg"  # غير هذا المسار حسب صورتك
+            # استخدام
+            PREPARED_IMAGE = prepare_image_ffmpeg(static_image_path)
+
 
             # أمر البث مع الصورة الثابتة
             command = [
                 "ffmpeg",
                 "-re",
-                "-i", filepath,
+                "-i", filepath,                    # الصوت
                 "-loop", "1",
-                "-framerate", "1",  # مهم: يضمن وصول إطارات منتظمة
-                "-i", STATIC_IMAGE_PATH,
+                "-i", PREPARED_IMAGE,           # الصورة
                 "-c:v", "libx264",
-                "-r", "1",  # 1 إطار في الثانية
-                "-b:v", "30k",
-                "-maxrate", "30k",
-                "-bufsize", "60k",
+                "-r", "15",                        # 15 إطار/ث (أقل معدل مقبول لظهور الفيديو)
+                "-b:v", "60k",                     # 60 كيلوبت/ث فقط
+                "-maxrate", "60k",
+                "-bufsize", "120k",
                 "-vf", "scale=1280:720,format=yuv420p",
                 "-c:a", "copy",
                 "-pix_fmt", "yuv420p",
-                "-g", "2",
+                "-g", "30",                        # keyframe كل ثانيتين (15*2)
                 "-shortest",
                 "-f", "flv",
-                "-flvflags", "no_duration_filesize",  # أضف هذا للتلفزيون
+                "-flvflags", "no_duration_filesize",
                 FULL_STREAM_URL
             ]
 
