@@ -408,25 +408,14 @@ def stream_loop():
             PREPARED_IMAGE = prepare_image_ffmpeg(static_image_path)
 
 
-            # أمر البث مع الصورة الثابتة
             command = [
                 "ffmpeg",
                 "-re",
-                "-i", filepath,                    # الصوت
-                "-loop", "1",
-                "-i", PREPARED_IMAGE,           # الصورة
-                "-c:v", "libx264",
-                "-r", "15",                        # 15 إطار/ث (أقل معدل مقبول لظهور الفيديو)
-                "-b:v", "60k",                     # 60 كيلوبت/ث فقط
-                "-maxrate", "60k",
-                "-bufsize", "120k",
-                "-vf", "scale=1280:720,format=yuv420p",
-                "-c:a", "copy",
-                "-pix_fmt", "yuv420p",
-                "-g", "30",                        # keyframe كل ثانيتين (15*2)
-                "-shortest",
+                "-i", filepath,
+                "-vn",
+                "-acodec", "copy",
+                "-flvflags", "no_duration_filesize",  # ضروري لمنع التقطيع مع تيليغرام
                 "-f", "flv",
-                "-flvflags", "no_duration_filesize",
                 FULL_STREAM_URL
             ]
 
