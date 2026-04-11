@@ -780,9 +780,7 @@ def webhook():
 
 
 def set_webhook():
-    if not base_url:
-        # بديل للاختبار المحلي باستخدام ngrok
-        base_url = os.getenv("WEBHOOK_BASE_URL")
+    global base_url
     
     if base_url:
         webhook_url = f"{base_url}{WEBHOOK_URL}"
