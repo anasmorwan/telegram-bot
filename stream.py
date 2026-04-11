@@ -6,7 +6,8 @@ import subprocess
 import time
 from dotenv import load_dotenv
 from threading import Thread
-from flask import Flask
+from flask import Flask, request, Response
+import threading
 import asyncio
 import requests
 import tempfile
@@ -15,7 +16,8 @@ from datetime import datetime
 from flask import render_template
 load_dotenv()
 API_URL = "https://mp3quran.net/api/v3/reciters?language=ar"
-
+base_url = os.getenv("RENDER_EXTERNAL_URL")  # Render يوفر هذا تلقائيًا
+    
 RTMP_URL = os.getenv("RTMP_URL")
 STREAM_KEY = os.getenv("STREAM_KEY")
 FULL_STREAM_URL = f"{RTMP_URL}/{STREAM_KEY}"
@@ -757,23 +759,75 @@ def run_flask():
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
+
+
+
+# ====== Flask Webhook ======
+WEBHOOK_URL = "/webhook"
+
+@app.route(WEBHOOK_URL, methods=["POST"])
+def webhook():
+    """استقبال التحديثات من تيليغرام"""
+    if request.headers.get("content-type") == "application/json":
+        json_data = request.get_json()
+        try:
+            # معالجة التحديث
+            bot.process_new_updates([telebot.types.Update.de_json(json_data)])
+        except Exception as e:
+            print(f"خطأ في معالجة webhook: {e}")
+        return Response("OK", status=200)
+    return Response("Bad Request", status=403)
+
+
+def set_webhook():
+    if not base_url:
+        # بديل للاختبار المحلي باستخدام ngrok
+        base_url = os.getenv("WEBHOOK_BASE_URL")
+    
+    if base_url:
+        webhook_url = f"{base_url}{WEBHOOK_URL}"
+        try:
+            bot.remove_webhook()
+            bot.set_webhook(url=webhook_url)
+            print(f"✅ Webhook set to: {webhook_url}")
+        except Exception as e:
+            print(f"❌ فشل تعيين webhook: {e}")
+    else:
+        print("⚠️ لم يتم العثور على URL للـ webhook، سيتم استخدام polling بدلاً من ذلك")
+        # بدء polling كبديل
+        threading.Thread(target=bot.infinity_polling, daemon=True).start()
+
+
+def run_flask():
+    """تشغيل خادم Flask"""
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
+
 # ====== Main ======
-
-
-
 if __name__ == "__main__":
-
-    # Flask
+    # تعيين webhook قبل بدء الخادم
+    set_webhook()
+    
+    # تشغيل Flask في thread منفصل
     t1 = Thread(target=run_flask)
     t1.daemon = True
     t1.start()
-
-    # Stream
+    
+    # تشغيل البث في thread منفصل
     t2 = Thread(target=stream_loop)
     t2.daemon = True
     t2.start()
-
-    # Bot polling (في Main Thread)
-    print("Bot started...")
-    bot.infinity_polling()
+    
+    print("Bot started with Webhook...")
+    
+    # لا تحتاج إلى bot.infinity_polling() هنا لأن webhook يتولى الأمر
+    
+    # إبقاء البرنامج قيد التشغيل
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("🛑 إيقاف البوت...")
+        bot.remove_webhook()
 
