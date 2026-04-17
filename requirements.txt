@@ -4,3 +4,4 @@ python-dotenv
 flask
 pyTelegramBotAPI
 schedule
+hijri-converter
