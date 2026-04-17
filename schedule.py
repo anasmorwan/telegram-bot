@@ -31,3 +31,12 @@ scheduler.add_job(
     hour=20,
     minute=0
 )
+
+
+scheduler.add_job(
+    send_daily_post,
+    trigger='interval',
+    days=2,
+    hour=10,
+    minute=0
+)
