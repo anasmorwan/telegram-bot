@@ -6,7 +6,7 @@ scheduler = BackgroundScheduler()
 
 # صباح الجمعة
 scheduler.add_job(
-    send_smart_message,
+    send_messages,
     trigger='cron',
     day_of_week='fri',
     hour=9,
@@ -15,7 +15,7 @@ scheduler.add_job(
 
 # بعد العصر
 scheduler.add_job(
-    send_smart_message,
+    send_messages,
     trigger='cron',
     day_of_week='fri',
     hour=16,
@@ -24,7 +24,7 @@ scheduler.add_job(
 
 # مساء
 scheduler.add_job(
-    send_smart_message,
+    send_messages,
     trigger='cron',
     day_of_week='fri',
     hour=20,
