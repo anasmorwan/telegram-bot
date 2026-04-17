@@ -250,7 +250,7 @@ def send_daily_post():
     else:
         print("❌ فشل في تكوين المحتوى")
 
-def send_smart_message():
+def send_messages():
     print(f"[{datetime.now()}] جاري تجهيز المنشور...")
     content = get_smart_message()
     
