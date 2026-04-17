@@ -226,8 +226,7 @@ def get_jumuah_reminders():
 
     return None
     
-    
-# ========== نظام الإرسال ==========
+# ========== الرسالة النهائية ==========
 def get_smart_message():
     event = get_islamic_event()
 
@@ -236,7 +235,7 @@ def get_smart_message():
 
     return get_jumuah_reminders()
 
-
+# ========== نظام الإرسال ==========
 def send_daily_post():
     print(f"[{datetime.now()}] جاري تجهيز المنشور...")
     content = get_random_content()
