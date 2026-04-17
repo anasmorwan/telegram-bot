@@ -1,5 +1,4 @@
 from apscheduler.schedulers.background import BackgroundScheduler
-from contents import send_messages, send_daily_post
 
 scheduler = BackgroundScheduler()
 
