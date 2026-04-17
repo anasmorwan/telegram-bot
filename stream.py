@@ -825,9 +825,6 @@ if __name__ == "__main__":
     t2.daemon = True
     t2.start()
 
-    t3 = Thread(target=run_task)
-    t3.daemon = True
-    t3.start()
     
     print("Bot started with Webhook...")
     
