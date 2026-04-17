@@ -14,7 +14,7 @@ import tempfile
 import os
 from datetime import datetime
 from flask import render_template
-from contents import run_task
+from contents import run_task, send_daily_post
 
 load_dotenv()
 API_URL = "https://mp3quran.net/api/v3/reciters?language=ar"
@@ -822,6 +822,7 @@ if __name__ == "__main__":
     t2.start()
     
     print("Bot started with Webhook...")
+    send_daily_post()
     
     # لا تحتاج إلى bot.infinity_polling() هنا لأن webhook يتولى الأمر
     
