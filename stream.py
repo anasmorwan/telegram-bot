@@ -15,7 +15,7 @@ import os
 from datetime import datetime
 from flask import render_template
 from contents import run_task, send_daily_post
-
+from schedule import schedule 
 load_dotenv()
 API_URL = "https://mp3quran.net/api/v3/reciters?language=ar"
 base_url = os.getenv("RENDER_EXTERNAL_URL")  # Render يوفر هذا تلقائيًا
@@ -804,6 +804,10 @@ def run_flask():
     """تشغيل خادم Flask"""
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+
+scheduler.start()
+
 
 
 # ====== Main ======
