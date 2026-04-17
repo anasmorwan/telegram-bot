@@ -805,7 +805,7 @@ def run_flask():
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
-run_task()
+
 # ====== Main ======
 if __name__ == "__main__":
     # تعيين webhook قبل بدء الخادم
@@ -820,6 +820,10 @@ if __name__ == "__main__":
     t2 = Thread(target=stream_loop)
     t2.daemon = True
     t2.start()
+
+    t3 = Thread(target=run_task)
+    t3.daemon = True
+    t3.start()
     
     print("Bot started with Webhook...")
     send_daily_post()
