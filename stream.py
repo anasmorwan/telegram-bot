@@ -15,7 +15,7 @@ import os
 from datetime import datetime
 from flask import render_template
 from schedule import scheduler
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 
@@ -819,11 +819,18 @@ scheduler.add_job(send_messages, 'cron', day_of_week='fri', hour=16, minute=30)
 scheduler.add_job(send_messages, 'cron', day_of_week='fri', hour=20, minute=0)
 
 # كل يومين
-from datetime import datetime, timedelta
 
-start_date = datetime.now().replace(hour=10, minute=0, second=0, microsecond=0)
-now = datetime.now(ZoneInfo("Africa/Khartoum"))
 
+# تحديد المنطقة الزمنية
+tz = ZoneInfo("Africa/Khartoum")
+
+# جعل now يتبع المنطقة الزمنية
+now = datetime.now(tz)
+
+# جعل start_date يتبع نفس المنطقة الزمنية (tzinfo=tz)
+start_date = datetime.now(tz).replace(hour=10, minute=0, second=0, microsecond=0)
+
+# الآن المقارنة ستعمل بنجاح
 if now > start_date:
     start_date += timedelta(days=1)
 
