@@ -15,6 +15,9 @@ import os
 from datetime import datetime
 from flask import render_template
 from schedule import scheduler
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 
 
 load_dotenv()
@@ -819,8 +822,9 @@ scheduler.add_job(send_messages, 'cron', day_of_week='fri', hour=20, minute=0)
 from datetime import datetime, timedelta
 
 start_date = datetime.now().replace(hour=10, minute=0, second=0, microsecond=0)
+now = datetime.now(ZoneInfo("Africa/Khartoum"))
 
-if datetime.now() > start_date:
+if now > start_date:
     start_date += timedelta(days=1)
 
 scheduler.add_job(
