@@ -826,7 +826,7 @@ if __name__ == "__main__":
     t3.start()
     
     print("Bot started with Webhook...")
-    send_daily_post()
+    
     
     # لا تحتاج إلى bot.infinity_polling() هنا لأن webhook يتولى الأمر
     
