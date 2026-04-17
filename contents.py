@@ -59,9 +59,9 @@ def get_ayah_with_tafsir():
             short_tafsir = clean_text_cut(tafsir_text)
             
             formatted_msg = (
-                f"📖 *سورة {surah_name} (الآية {ayah_num})*\n\n"
+                f"📖 سورة {surah_name} (الآية {ayah_num})\n\n"
                 f"« {ayah_text} »\n\n"
-                f"🌿 *التفسير الميسر:*\n{short_tafsir}"
+                f"🌿 التفسير الميسر:\n{short_tafsir}"
             )
             return formatted_msg
     except Exception as e:
