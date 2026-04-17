@@ -816,7 +816,20 @@ scheduler.add_job(send_messages, 'cron', day_of_week='fri', hour=16, minute=30)
 scheduler.add_job(send_messages, 'cron', day_of_week='fri', hour=20, minute=0)
 
 # كل يومين
-scheduler.add_job(send_daily_post, 'interval', days=2, hour=10, minute=0)
+from datetime import datetime, timedelta
+
+start_date = datetime.now().replace(hour=10, minute=0, second=0, microsecond=0)
+
+if datetime.now() > start_date:
+    start_date += timedelta(days=1)
+
+scheduler.add_job(
+    send_daily_post,
+    trigger='interval',
+    days=2,
+    start_date=start_date
+)
+
 
 scheduler.start()
 
