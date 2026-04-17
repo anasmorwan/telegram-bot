@@ -14,6 +14,8 @@ import tempfile
 import os
 from datetime import datetime
 from flask import render_template
+from contents import run_task
+
 load_dotenv()
 API_URL = "https://mp3quran.net/api/v3/reciters?language=ar"
 base_url = os.getenv("RENDER_EXTERNAL_URL")  # Render يوفر هذا تلقائيًا
@@ -803,7 +805,7 @@ def run_flask():
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
-
+run_task()
 # ====== Main ======
 if __name__ == "__main__":
     # تعيين webhook قبل بدء الخادم
