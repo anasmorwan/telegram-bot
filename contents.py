@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 # ========== إعدادات البوت ==========
-BOT_TOKEN = "ضع_توكن_البوت_هنا"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = "@Anwar_Eslam"
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -99,16 +99,10 @@ def send_daily_post():
         print("❌ فشل في تكوين المحتوى")
 
 # ========== الجدولة الموثوقة ==========
-
-# إرسال منشور تجريبي عند التشغيل فوراً للتأكد من أن كل شيء يعمل
-# send_daily_post() 
-
 # جدولة الإرسال كل يومين في ساعة محددة (مثلاً 10 صباحاً)
 schedule.every(2).days.at("10:00").do(send_daily_post)
 
-if __name__ == "__main__":
-    print("🚀 البوت بدأ العمل بنظام الجدولة الذكي...")
-    
+def run_task():
     while True:
         try:
             schedule.run_pending()
