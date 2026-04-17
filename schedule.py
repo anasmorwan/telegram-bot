@@ -1,4 +1,5 @@
 from apscheduler.schedulers.background import BackgroundScheduler
+from content import send_smart_message
 
 scheduler = BackgroundScheduler()
 
