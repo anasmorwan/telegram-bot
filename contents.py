@@ -5,6 +5,9 @@ import random
 import schedule
 import time
 from datetime import datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 
 # ========== إعدادات البوت ==========
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -206,7 +209,7 @@ def get_event_message(event):
         
 # ========== يوم الجمعة ==========    
 def get_jumuah_reminders():
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Africa/Khartoum"))
     weekday = now.weekday()
     hour = now.hour
 
