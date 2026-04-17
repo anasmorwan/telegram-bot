@@ -77,14 +77,10 @@ def get_random_content():
         return content
     
     else:
-        if choice < 0.8:  # 30% حديث
-            h = random.choice(HADITHS)
-            return f"🕌 *حديث نبوي شريف:*\n\n{h['text']}\n\n📚 _{h['source']}_"
+        h = random.choice(HADITHS)
+        return f"🕌 *حديث نبوي شريف:*\n\n{h['text']}\n\n📚 _{h['source']}_"
     
-        else:  # 20% مقتبس
-            q = random.choice(QUOTES)
-            return f"💡 *حكمة اليوم:*\n\n{q}"
-
+        
 # ========== نظام الإرسال ==========
 
 def send_daily_post():
