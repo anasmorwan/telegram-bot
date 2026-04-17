@@ -14,7 +14,6 @@ import tempfile
 import os
 from datetime import datetime
 from flask import render_template
-from contents import run_task
 from schedule import scheduler
 
 
