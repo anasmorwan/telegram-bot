@@ -65,23 +65,25 @@ def get_ayah_with_tafsir():
             )
             return formatted_msg
     except Exception as e:
-        print(f"Error fetching API: {e}")
+        print(f"Error fetching API: {e}", flush=True)
     return None
 
 def get_random_content():
     choice = random.random()
     
-    if choice < 0.5:  # 50% آية
-        content = get_ayah_with_tafsir()
-        if content: return content
+
+    content = get_ayah_with_tafsir()
+    if content:
+        return content
     
-    if choice < 0.8:  # 30% حديث
-        h = random.choice(HADITHS)
-        return f"🕌 *حديث نبوي شريف:*\n\n{h['text']}\n\n📚 _{h['source']}_"
+    else:
+        if choice < 0.8:  # 30% حديث
+            h = random.choice(HADITHS)
+            return f"🕌 *حديث نبوي شريف:*\n\n{h['text']}\n\n📚 _{h['source']}_"
     
-    else:  # 20% مقتبس
-        q = random.choice(QUOTES)
-        return f"💡 *حكمة اليوم:*\n\n{q}"
+        else:  # 20% مقتبس
+            q = random.choice(QUOTES)
+            return f"💡 *حكمة اليوم:*\n\n{q}"
 
 # ========== نظام الإرسال ==========
 
