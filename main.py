@@ -14,20 +14,21 @@ scheduler.start()
 
 
   # تعيين webhook قبل بدء الخادم
-  set_webhook()
+set_webhook()
     
-  # تشغيل Flask في thread منفصل
-  t1 = Thread(target=run_flask)
-  t1.daemon = True
-  t1.start()
+# تشغيل Flask في thread منفصل
+t1 = Thread(target=run_flask)
+t1.daemon = True
+t1.start()
     
-  # تشغيل البث في thread منفصل
-  t2 = Thread(target=stream_loop)
-  t2.daemon = True
-  t2.start()
+# تشغيل البث في thread منفصل
+t2 = Thread(target=stream_loop)
+t2.daemon = True
+  
+t2.start()
 
     
-  print("Bot started with Webhook...")
+print("Bot started with Webhook...")
     
     
 
