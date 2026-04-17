@@ -251,7 +251,7 @@ def send_daily_post():
     else:
         print("❌ فشل في تكوين المحتوى")
 
-def send_reminders():
+def send_smart_message():
     print(f"[{datetime.now()}] جاري تجهيز المنشور...")
     content = get_smart_message()
     
@@ -265,18 +265,3 @@ def send_reminders():
     else:
         print("❌ فشل في تكوين المحتوى")
         
-# ========== الجدولة الموثوقة ==========
-# جدولة الإرسال كل يومين في ساعة محددة (مثلاً 10 صباحاً)
-schedule.every(2).days.at("10:00").do(send_daily_post)
-schedule.every(2).days.at("10:00").do(send_reminders)
-
-
-
-def run_task():
-    while True:
-        try:
-            schedule.run_pending()
-            time.sleep(60) # فحص المهام كل دقيقة
-        except Exception as e:
-            print(f"خطأ في نظام الجدولة: {e}")
-            time.sleep(10)
