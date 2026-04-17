@@ -71,7 +71,29 @@ JUMUAH_RANDOMS = [
     "🌸 دعوة صادقة قد تغيّر كل شيء.. لا تبخل بها اليوم.",
     "📖 لا تنسوا الكهف.. ولو بضع آيات.",
 ]
-
+RAMADAN_MESSAGES = [
+    "🌙 رمضان مبارك\nما وردك اليوم من القرآن؟",
+    "📿 لا تنس أذكارك\nابدأ الآن",
+    "🤲 دعوة صادقة في رمضان\nاكتبها الآن",
+    "📖 القرآن حياة قلبك\nكم قرأت اليوم؟",
+]
+EID_FITR_MESSAGES = [
+    "🎉 عيد مبارك\nتقبل الله منا ومنكم 🤍",
+    "🕌 لا تنس التكبير\nالله أكبر الله أكبر",
+]
+EID_ADHA_MESSAGES = [
+    "🐑 عيدكم مبارك\nتقبل الله طاعاتكم 🤍",
+    "📿 أكثروا من التكبير\nالله أكبر كبيرًا",
+]
+MUHARRAM_MESSAGES = [
+    "🌙 عام هجري جديد\nجدد نيتك",
+    "📿 بداية جديدة\nما هدفك هذا العام؟",
+]
+DHUL_HIJJAH_MESSAGES = [
+    "🕋 أفضل أيام السنة\nأكثر من الذكر",
+    "📿 لا تفوّت هذه الأيام\nسبّح الآن",
+    "🤲 دعوة في هذه الأيام عظيمة\nادعُ الآن",
+]
 # ========== وظائف جلب البيانات ==========
 
 def clean_text_cut(text, max_length=400):
@@ -113,6 +135,8 @@ def get_ayah_with_tafsir():
         print(f"Error fetching API: {e}", flush=True)
     return None
 
+
+# ========== تفسير كل يومين ==========
 def get_random_content():
     choice = random.random()
     
@@ -127,9 +151,60 @@ def get_random_content():
         return f"🕌 *حديث نبوي شريف:*\n\n{h['text']}\n\n📚 _{h['source']}_"
     
 
-import random
-from datetime import datetime
 
+
+
+
+# ========== المناسبات الاسلامية ==========
+from hijri_converter import convert
+
+def get_hijri_date():
+    today = datetime.now()
+    hijri = convert.Gregorian(today.year, today.month, today.day).to_hijri()
+    return hijri.month, hijri.day
+
+def get_islamic_event():
+    month, day = get_hijri_date()
+
+    # رمضان
+    if month == 9:
+        return "RAMADAN"
+
+    # عيد الفطر (1 شوال)
+    elif month == 10 and day == 1:
+        return "EID_FITR"
+
+    # عيد الأضحى (10 ذو الحجة)
+    elif month == 12 and day == 10:
+        return "EID_ADHA"
+
+    # أول محرم
+    elif month == 1:
+        return "MUHARRAM"
+
+    # عشر ذي الحجة
+    elif month == 12 and day <= 10:
+        return "DHUL_HIJJAH"
+
+    return None
+
+def get_event_message(event):
+    if event == "RAMADAN":
+        return random.choice(RAMADAN_MESSAGES)
+
+    elif event == "EID_FITR":
+        return random.choice(EID_FITR_MESSAGES)
+
+    elif event == "EID_ADHA":
+        return random.choice(EID_ADHA_MESSAGES)
+
+    elif event == "MUHARRAM":
+        return random.choice(MUHARRAM_MESSAGES)
+
+    elif event == "DHUL_HIJJAH":
+        return random.choice(DHUL_HIJJAH_MESSAGES)
+        
+# ========== يوم الجمعة ==========    
 def get_jumuah_reminders():
     now = datetime.now()
     weekday = now.weekday()
@@ -153,6 +228,14 @@ def get_jumuah_reminders():
     
     
 # ========== نظام الإرسال ==========
+def get_smart_message():
+    event = get_islamic_event()
+
+    if event:
+        return get_event_message(event)
+
+    return get_jumuah_reminders()
+
 
 def send_daily_post():
     print(f"[{datetime.now()}] جاري تجهيز المنشور...")
@@ -168,9 +251,24 @@ def send_daily_post():
     else:
         print("❌ فشل في تكوين المحتوى")
 
+def send_reminders():
+    print(f"[{datetime.now()}] جاري تجهيز المنشور...")
+    content = get_smart_message()
+    
+    if content:
+        try:
+            # استخدام Markdown (V2) أو Markdown العادي لتحسين المظهر
+            bot.send_message(CHANNEL_ID, content, parse_mode='Markdown')
+            print(f"[{datetime.now()}] تم الإرسال بنجاح ✅")
+        except Exception as e:
+            print(f"❌ خطأ في الإرسال: {e}")
+    else:
+        print("❌ فشل في تكوين المحتوى")
+        
 # ========== الجدولة الموثوقة ==========
 # جدولة الإرسال كل يومين في ساعة محددة (مثلاً 10 صباحاً)
 schedule.every(2).days.at("10:00").do(send_daily_post)
+schedule.every(2).days.at("10:00").do(send_reminders)
 
 
 
