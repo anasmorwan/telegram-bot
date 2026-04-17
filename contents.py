@@ -7,7 +7,7 @@ from datetime import datetime
 
 # ========== إعدادات البوت ==========
 BOT_TOKEN = "ضع_توكن_البوت_هنا"
-CHANNEL_ID = "@username_qanatak" 
+CHANNEL_ID = "@Anwar_Eslam"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # ========== قاعدة البيانات المحلية ==========
