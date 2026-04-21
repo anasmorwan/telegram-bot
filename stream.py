@@ -834,12 +834,12 @@ start_date = datetime.now(tz).replace(hour=10, minute=0, second=0, microsecond=0
 if now > start_date:
     start_date += timedelta(days=1)
 
-scheduler.add_job(
-    send_daily_post,
-    trigger='interval',
-    days=2,
-    start_date=start_date
-)
+# scheduler.add_job(
+  #  send_daily_post,
+#    trigger='interval',
+ #   days=2,
+#    start_date=start_date
+# )
 
 
 scheduler.start()
