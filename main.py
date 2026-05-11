@@ -1,6 +1,7 @@
 import threading
 from schedule import scheduler
 from contents import send_messages, send_daily_post
+from bot import flask
 
 # الجمعة
 scheduler.add_job(send_messages, 'cron', day_of_week='fri', hour=9, minute=0)
@@ -12,10 +13,11 @@ scheduler.add_job(send_daily_post, 'interval', days=2, hour=10, minute=0)
 
 scheduler.start()
 
-
+app = flask.app
 
   # تعيين webhook قبل بدء الخادم
 set_webhook()
+flask.regiser(bot)
     
 # تشغيل Flask في thread منفصل
 t1 = Thread(target=run_flask)
