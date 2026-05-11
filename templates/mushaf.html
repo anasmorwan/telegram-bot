@@ -1,107 +1,66 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
+
 <head>
 <meta charset="UTF-8">
-<title>المصحف المباشر</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&display=swap" rel="stylesheet">
 
 <style>
-body {
-    font-family: 'Amiri Quran', serif;
-    background: #f4ecd8;
-    transition: 0.4s;
-    text-align: center;
-    direction: rtl;
-    margin: 0;
-    padding: 20px;
+
+body{
+    font-size:40px;
+    font-family:Amiri;
+    background:#f5f1e8;
+    padding:40px;
+    line-height:2.5;
 }
 
-/* الوضع الليلي */
-body.dark {
-    background: #121212;
-    color: #eee;
+.active{
+    background:yellow;
 }
 
-.container {
-    max-width: 850px;
-    margin: auto;
-    background: #fffdf5;
-    padding: 40px;
-    border-radius: 18px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-    transition: 0.4s;
-}
-
-body.dark .container {
-    background: #1e1e1e;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
-}
-
-h1 {
-    font-size: 30px;
-    margin-bottom: 5px;
-}
-
-.info {
-    color: #777;
-    margin-bottom: 30px;
-}
-
-body.dark .info {
-    color: #aaa;
-}
-
-.ayah {
-    font-size: 34px;
-    line-height: 2.4;
-    margin-bottom: 25px;
-}
-
-.number {
-    color: #2e7d32;
-    font-size: 18px;
-    margin-right: 6px;
-}
-
-.toggle {
-    cursor: pointer;
-    padding: 10px 18px;
-    border-radius: 8px;
-    border: none;
-    background: #2e7d32;
-    color: white;
-    font-size: 14px;
-    margin-bottom: 25px;
-    transition: 0.3s;
-}
-
-.toggle:hover {
-    opacity: 0.85;
-}
 </style>
+
 </head>
 
 <body>
 
-<div class="container">
+<div id="quran">
 
-<button class="toggle" onclick="toggleDarkMode()">🌙 تبديل الوضع الليلي</button>
+{% for ayah in surah.ayahs %}
 
-<h1>سورة الفاتحة</h1>
-<div class="info">الآية 1</div>
+<span
+class="{% if ayah.number == current_ayah %}active{% endif %}"
+id="ayah-{{ ayah.number }}"
+>
+{{ ayah.text }}
+</span>
 
-<div class="ayah">
-بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-<span class="number">(1)</span>
-</div>
+{% endfor %}
 
 </div>
 
 <script>
-function toggleDarkMode() {
-    document.body.classList.toggle("dark");
+
+async function updateAyah(){
+
+    let response = await fetch('/current')
+    let data = await response.json()
+
+    document.querySelectorAll('span').forEach(
+        el => el.classList.remove('active')
+    )
+
+    let ayah = document.getElementById(
+        'ayah-' + data.ayah
+    )
+
+    if(ayah){
+        ayah.classList.add('active')
+    }
 }
+
+setInterval(updateAyah,1000)
+
 </script>
 
 </body>
