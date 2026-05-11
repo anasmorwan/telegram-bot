@@ -1,7 +1,41 @@
-from flask import Flask, request, Response
+from flask import Flask, jsonify, render_template, request, Response
 
+import json
 
 app = Flask(__name__)
+
+CURRENT_SURAH = 1
+CURRENT_AYAH = 1
+
+@app.route("/mushaf")
+def mushaf():
+
+    with open("quran/1.json", "r", encoding="utf-8") as f:
+        surah_data = json.load(f)
+
+    return render_template(
+        "mushaf.html",
+        surah=surah_data,
+        current_ayah=CURRENT_AYAH
+    )
+
+@app.route("/current")
+def current():
+    return jsonify({
+        "surah": CURRENT_SURAH,
+        "ayah": CURRENT_AYAH
+    })
+
+app.run(debug=True)
+
+
+
+#-----------------------------
+#-----------------------------
+#-----------------------------
+#-----------------------------
+#-----------------------------
+
 
 
 # ====== Flask uptime ======
@@ -10,22 +44,6 @@ def home():
     return "Alive", 200
 
 
-@app.route("/mushaf")
-def mushaf():
-    with open(CONFIG_FILE, "r") as f:
-        config = json.load(f)
-
-    reciter = config.get("reciter", "غير معروف")
-    index = config.get("current_index", 0)
-
-    # رقم السورة = index + 1
-    sura_number = index + 1
-
-    return render_template(
-        "mushaf.html",
-        reciter=reciter,
-        sura_number=sura_number
-    )
 def run_flask():
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
