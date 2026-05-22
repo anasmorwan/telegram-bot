@@ -250,10 +250,10 @@ def get_jumuah_reminders():
     
 # ========== الرسالة النهائية ==========
 def get_smart_message():
-    event = get_islamic_event()
+    # event = get_islamic_event()
 
-    if event:
-        return get_event_message(event)
+   # if event:
+        # return get_event_message(event)
 
     return get_jumuah_reminders()
 
