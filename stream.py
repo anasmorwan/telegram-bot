@@ -17,6 +17,7 @@ from flask import render_template
 from schedule import scheduler
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from flask import jsonify
 
 
 
@@ -746,7 +747,30 @@ app = Flask(__name__)
 def home():
     return "Alive", 200
 
+@app.route("/api/visit")
+def visit_counter():
 
+    counter_file = "counter.json"
+
+    # إذا الملف غير موجود
+    if not os.path.exists(counter_file):
+
+        with open(counter_file, "w") as f:
+            json.dump({"visits": 0}, f)
+
+    # قراءة العدد الحالي
+    with open(counter_file, "r") as f:
+        data = json.load(f)
+
+    # زيادة العدد
+    data["visits"] += 1
+
+    # حفظ العدد الجديد
+    with open(counter_file, "w") as f:
+        json.dump(data, f)
+
+    return jsonify(data)
+    
 @app.route("/eid")
 def eid():
     return render_template(
