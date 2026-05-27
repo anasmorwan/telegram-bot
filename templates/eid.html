@@ -106,6 +106,9 @@
     <div class="card">
         <h1>🎉 اختبر حظك في العيد 😂</h1>
         <p class="subtitle">مجرد تجربة عشوائية للضحك… لا تتحمل النتائج النفسية 😂</p>
+        <p id="counterText" style="color:#7f8c8d; font-size:14px;">
+    🔥 الناس قاعدة تدخل...
+        </p>
         
         <div id="result">
             <span style="color: #95a5a6;">اضغط على الزر لتعرف مصيرك..</span>
@@ -138,6 +141,14 @@
         const shareBtn = document.getElementById('shareBtn');
         const resultDiv = document.getElementById('result');
         const greetingDiv = document.getElementById('greeting');
+        fetch('/api/visit')
+        .then(res => res.json())
+        .then(data => {
+
+            document.getElementById('counterText').innerHTML =
+        `🔥 أكثر من ${data.visits} شخص جرّب حظه في العيد 😂`;
+
+        });
         
 
         btn.addEventListener('click', () => {
@@ -186,3 +197,7 @@ https://telegram-bot-uvyr.onrender.com/eid`
 
 </body>
 </html>
+
+
+
+
