@@ -156,7 +156,14 @@
                     resultDiv.innerHTML = `عيدك هو:<br><b class="final-text">${finalResult}</b>`;
                     
                     // تجهيز رابط الواتساب
-                    const shareText = encodeURIComponent(`طلع حظي في العيد: (${finalResult}) 😂.. اختبر حظك من هنا!`);
+                    const shareText = encodeURIComponent(
+`💀 دخلت الموقع عشان أضحك… طلع فضحني:
+
+"${finalResult}"
+
+هسي دورك 😂👇
+جرب حظك في العيد 🎉`
+);
                     shareBtn.href = `https://api.whatsapp.com/send?text=${shareText}`;
                     
                     // إظهار العناصر الإضافية
