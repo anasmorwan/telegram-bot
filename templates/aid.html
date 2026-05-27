@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حظك في العيد</title>
+    <style>
+        /* تنسيق الصفحة بالكامل */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa; /* لون خلفية هادئ */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* تنسيق المربع الأبيض في المنتصف */
+        .card {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        /* تنسيق الزر */
+        button {
+            background-color: #e74c3c; /* أحمر جميل */
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #c0392b;
+            transform: scale(1.05); /* تكبير الزر قليلاً عند مرور الماوس */
+        }
+
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* تنسيق النص الذي تظهر فيه النتيجة */
+        #result {
+            margin-top: 30px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #2980b9;
+            min-height: 60px; /* لحجز مساحة حتى لا تقفز الصفحة */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>🎉 اختبر حظك في العيد 😂</h1>
+        <button id="spinBtn">اضغط لمعرفة نوع عيدك</button>
+        <div id="result">هل أنت مستعد؟</div>
+    </div>
+
+    <script>
+        // مصفوفة تحتوي على النتائج المضحكة
+        const results = [
+            "نوم + لحمة 🥩😴",
+            "زيارات إجبارية لا تنتهي 🏃‍♂️",
+            "طفل يطلب عيدية كل 5 دقائق 🪙😭",
+            "اتصال من خالة لم ترها منذ 2009 📞",
+            "غسيل عدة الشاي والقهوة طوال اليوم ☕🧼",
+            "تأكل خبيز لحد ما بطنك توجعك 🍪😂"
+        ];
+
+        const btn = document.getElementById('spinBtn');
+        const resultDiv = document.getElementById('result');
+
+        // ماذا يحدث عند الضغط على الزر؟
+        btn.addEventListener('click', () => {
+            // تعطيل الزر أثناء اللعب
+            btn.disabled = true;
+            
+            let counter = 0;
+            
+            // عمل تأثير "الروليت" (تقليب سريع للنتائج)
+            const interval = setInterval(() => {
+                // اختيار نتيجة عشوائية وعرضها بسرعة
+                resultDiv.innerText = results[Math.floor(Math.random() * results.length)];
+                counter++;
+                
+                // التوقف بعد 15 لفة سريعة (حوالي ثانية ونصف)
+                if (counter > 15) {
+                    clearInterval(interval);
+                    // اختيار النتيجة النهائية
+                    const finalResult = results[Math.floor(Math.random() * results.length)];
+                    resultDiv.innerHTML = `عيدك هو:<br><span style="color: #e74c3c; font-size: 28px;">${finalResult}</span>`;
+                    
+                    // إعادة تفعيل الزر
+                    btn.disabled = false;
+                }
+            }, 100); // سرعة التقليب (100 ملي ثانية)
+        });
+    </script>
+
+</body>
+</html>
