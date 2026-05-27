@@ -747,21 +747,10 @@ def home():
     return "Alive", 200
 
 
-@app.route("/mushaf")
-def mushaf():
-    with open(CONFIG_FILE, "r") as f:
-        config = json.load(f)
-
-    reciter = config.get("reciter", "غير معروف")
-    index = config.get("current_index", 0)
-
-    # رقم السورة = index + 1
-    sura_number = index + 1
-
+@app.route("/eid")
+def eid():
     return render_template(
-        "mushaf.html",
-        reciter=reciter,
-        sura_number=sura_number
+        "eid.html"
     )
 def run_flask():
     port = int(os.getenv("PORT", 5000))
