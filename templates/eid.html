@@ -3,115 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حظك في العيد</title>
+    <title>حظك في العيد - نسخة الدفعة</title>
     <style>
-        /* تنسيق الصفحة بالكامل */
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --medical-blue: #3498db;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa; /* لون خلفية هادئ */
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            overflow-x: hidden;
         }
 
-        /* تنسيق المربع الأبيض في المنتصف */
         .card {
             background-color: #ffffff;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
             text-align: center;
-            max-width: 400px;
+            max-width: 450px;
             width: 90%;
+            position: relative;
         }
 
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 30px;
-        }
+        h1 { color: var(--primary-color); margin-bottom: 10px; font-size: 24px; }
+        p.subtitle { color: #666; margin-bottom: 25px; font-size: 14px; }
 
-        /* تنسيق الزر */
+        .btn-group { display: flex; flex-direction: column; gap: 10px; }
+
         button {
-            background-color: #e74c3c; /* أحمر جميل */
-            color: white;
             border: none;
-            padding: 15px 30px;
+            padding: 15px 25px;
             font-size: 18px;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
+            transition: all 0.3s ease;
             font-weight: bold;
         }
 
-        button:hover {
-            background-color: #c0392b;
-            transform: scale(1.05); /* تكبير الزر قليلاً عند مرور الماوس */
+        #spinBtn {
+            background-color: var(--accent-color);
+            color: white;
         }
 
-        button:disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-            transform: none;
+        #spinBtn:hover { background-color: #c0392b; transform: translateY(-2px); }
+
+        /* زر المشاركة يكون مخفياً في البداية */
+        #shareBtn {
+            background-color: #25d366; /* لون الواتساب */
+            color: white;
+            display: none;
+            font-size: 16px;
+            text-decoration: none;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* تنسيق النص الذي تظهر فيه النتيجة */
         #result {
-            margin-top: 30px;
-            font-size: 22px;
-            font-weight: bold;
-            color: #2980b9;
-            min-height: 60px; /* لحجز مساحة حتى لا تقفز الصفحة */
+            margin: 25px 0;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
         }
+
+        .final-text {
+            font-size: 24px;
+            color: var(--medical-blue);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* رسالة التهنئة اللطيفة */
+        #greeting {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0fdf4;
+            border-right: 4px solid #22c55e;
+            color: #166534;
+            font-size: 14px;
+            display: none;
+            border-radius: 4px;
+        }
+
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h1>🎉 اختبر حظك في العيد 😂</h1>
-        <button id="spinBtn">اضغط لمعرفة نوع عيدك</button>
-        <div id="result">هل أنت مستعد؟</div>
+        <p class="subtitle">نسخة خاصة بطلاب الطب (الدفعة 34 وما جاورها)</p>
+        
+        <div id="result">
+            <span style="color: #95a5a6;">اضغط على الزر لتعرف مصيرك..</span>
+        </div>
+
+        <div class="btn-group">
+            <button id="spinBtn">شوف حظي شنو 🎲</button>
+            <a id="shareBtn" href="#" target="_blank">شارك نتيجتك (واتساب) 🟢</a>
+        </div>
+
+        <div id="greeting">
+            بعيداً عن الهزار.. كل عام وأنت بخير يا دكتور، وعيد سعيد عليك وعلى أحبابك! ✨❤️
+        </div>
     </div>
 
     <script>
-        // مصفوفة تحتوي على النتائج المضحكة
         const results = [
-            "نوم + لحمة 🥩😴",
-            "زيارات إجبارية لا تنتهي 🏃‍♂️",
-            "طفل يطلب عيدية كل 5 دقائق 🪙😭",
-            "اتصال من خالة لم ترها منذ 2009 📞",
-            "غسيل عدة الشاي والقهوة طوال اليوم ☕🧼",
-            "تأكل خبيز لحد ما بطنك توجعك 🍪😂"
+            "نوم عميق + لحمة مرارة 🥩😴",
+            "تقرأ باثولوجي يوم الوقفة عشان السيمينار 💀📚",
+            "زيارات إجبارية لبنات خالتك وأنت ناسي أسمائهم 🏃‍♂️",
+            "خفارة (Call) في الاستقبال وتسمع التكبيرات من بعيد 🚑💔",
+            "تسأل عن العيدية يقولوا ليك: (أنت بقيت دكتور طول الباب!) 💸🚫",
+            "طفل يطلب عيدية كل 5 دقائق وهو أصلاً أغنى منك 🪙😭",
+            "قعدة مع بائع الشاي في شارع النيل بالليل 🌃☕",
+            "تاكل خبيز لحد ما تدخل في Diabetic Ketoacidosis 🍪 الضحك للركب"
         ];
 
         const btn = document.getElementById('spinBtn');
+        const shareBtn = document.getElementById('shareBtn');
         const resultDiv = document.getElementById('result');
+        const greetingDiv = document.getElementById('greeting');
 
-        // ماذا يحدث عند الضغط على الزر؟
         btn.addEventListener('click', () => {
-            // تعطيل الزر أثناء اللعب
             btn.disabled = true;
+            shareBtn.style.display = 'none';
+            greetingDiv.style.display = 'none';
             
             let counter = 0;
-            
-            // عمل تأثير "الروليت" (تقليب سريع للنتائج)
             const interval = setInterval(() => {
-                // اختيار نتيجة عشوائية وعرضها بسرعة
-                resultDiv.innerText = results[Math.floor(Math.random() * results.length)];
+                resultDiv.innerHTML = `<span style="color: #7f8c8d;">${results[Math.floor(Math.random() * results.length)]}</span>`;
                 counter++;
                 
-                // التوقف بعد 15 لفة سريعة (حوالي ثانية ونصف)
                 if (counter > 15) {
                     clearInterval(interval);
-                    // اختيار النتيجة النهائية
                     const finalResult = results[Math.floor(Math.random() * results.length)];
-                    resultDiv.innerHTML = `عيدك هو:<br><span style="color: #e74c3c; font-size: 28px;">${finalResult}</span>`;
                     
-                    // إعادة تفعيل الزر
-                    btn.disabled = false;
+                    // إظهار النتيجة النهائية
+                    resultDiv.innerHTML = `عيدك هو:<br><b class="final-text">${finalResult}</b>`;
+                    
+                    // تجهيز رابط الواتساب
+                    const shareText = encodeURIComponent(`طلع حظي في العيد: (${finalResult}) 😂.. اختبر حظك من هنا!`);
+                    shareBtn.href = `https://api.whatsapp.com/send?text=${shareText}`;
+                    
+                    // إظهار العناصر الإضافية
+                    setTimeout(() => {
+                        shareBtn.style.display = 'flex';
+                        btn.disabled = false;
+                        btn.innerText = "جرب حظك تاني 🔄";
+                    }, 500);
+
+                    // إظهار التهنئة اللطيفة بعد 2 ثانية
+                    setTimeout(() => {
+                        greetingDiv.style.display = 'block';
+                    }, 2000);
                 }
-            }, 100); // سرعة التقليب (100 ملي ثانية)
+            }, 80);
         });
     </script>
 
