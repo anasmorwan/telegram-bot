@@ -138,14 +138,7 @@
         const shareBtn = document.getElementById('shareBtn');
         const resultDiv = document.getElementById('result');
         const greetingDiv = document.getElementById('greeting');
-        fetch('/api/visit')
-        .then(res => res.json())
-        .then(data => {
-
-        document.getElementById('counterText').innerHTML =
-            `🔥 أكثر من ${data.visits} شخص جرّب حظه في العيد 😂`;
-
-    });
+        
 
         btn.addEventListener('click', () => {
             btn.disabled = true;
@@ -189,32 +182,6 @@ https://telegram-bot-uvyr.onrender.com/eid`
                 }
             }, 80);
         });
-        const express = require('express');
-        const fs = require('fs');
-
-        const app = express();
-
-        app.use(express.static('public'));
-
-        app.get('/api/visit', (req, res) => {
-
-            const data = JSON.parse(
-                fs.readFileSync('counter.json', 'utf8')
-            );
-
-            data.visits++;
-
-            fs.writeFileSync(
-                'counter.json',
-                JSON.stringify(data)
-            );
-
-            res.json({
-                visits: data.visits
-            });
-        });
-
-        app.listen(3000);
     </script>
 
 </body>
