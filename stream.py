@@ -747,35 +747,8 @@ app = Flask(__name__)
 def home():
     return "Alive", 200
 
-@app.route("/api/visit")
-def visit_counter():
 
-    counter_file = "counter.json"
 
-    # إذا الملف غير موجود
-    if not os.path.exists(counter_file):
-
-        with open(counter_file, "w") as f:
-            json.dump({"visits": 0}, f)
-
-    # قراءة العدد الحالي
-    with open(counter_file, "r") as f:
-        data = json.load(f)
-
-    # زيادة العدد
-    data["visits"] += 1
-
-    # حفظ العدد الجديد
-    with open(counter_file, "w") as f:
-        json.dump(data, f)
-
-    return jsonify(data)
-    
-@app.route("/eid")
-def eid():
-    return render_template(
-        "eid.html"
-    )
 def run_flask():
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
